@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>LatteLab – סימולטור לאטה ארט</title>
+<style>
+:root{--ink:#3d4f63;--soft:#8fa2b6;--track:#dfe6ee;--fill:#a9c1d8;--bg:#f6f6f4}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;font-family:ui-rounded,"SF Pro Rounded","Nunito","Varela Round",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--ink)}
+#app{position:fixed;inset:0;touch-action:none}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.ui{transition:opacity .25s}
+.hidden .ui{opacity:0;pointer-events:none}
+#brand{position:absolute;left:18px;top:calc(env(safe-area-inset-top) + 58px);line-height:1}
+#brand b{font-size:26px;font-weight:800;letter-spacing:-.3px;color:#33465b}
+#brand small{display:block;font-size:10px;letter-spacing:2px;color:#9aa9b8;font-weight:700;margin-top:5px}
+#topbtns{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 14px);display:flex;gap:10px}
+.cbtn{width:44px;height:44px;border-radius:50%;background:#fff;border:none;display:grid;place-items:center;box-shadow:0 2px 10px rgba(40,60,90,.10);color:var(--ink);cursor:pointer;padding:0}
+.cbtn svg{width:22px;height:22px}
+.cbtn:active{transform:scale(.94)}
+#eye{position:relative}
+.hidden #eye{opacity:.55}
+.vs{position:absolute;width:56px;display:flex;flex-direction:column;align-items:center;font-size:12px;font-weight:700;color:#8a9bad}
+.vs .lab{height:18px}
+.vs .trk{position:relative;width:8px;border-radius:6px;background:var(--track);margin:10px 0;touch-action:none;cursor:pointer}
+.vs .trk::before{content:"";position:absolute;inset:-6px -22px}
+.vs .fl{position:absolute;left:0;right:0;bottom:0;border-radius:6px;background:var(--fill)}
+.vs .th{position:absolute;left:50%;transform:translate(-50%,50%);width:30px;height:30px;border-radius:50%;background:#fff;border:2.5px solid var(--ink);box-shadow:0 2px 8px rgba(40,60,90,.18)}
+#hs .th{border:none;background:transparent;box-shadow:none;width:34px;height:34px}
+#hs .th svg{width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(40,60,90,.2))}
+#flowv{color:var(--ink);font-size:13px}
+#mode{position:absolute;left:18px;bottom:calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#8a9bad;cursor:pointer}
+#mode .cbtn{width:50px;height:50px}
+#mode .cbtn svg{transition:transform .3s}
+#mode .opt{display:flex;flex-direction:column;align-items:center;line-height:1.3}
+#mode .opt span{opacity:.45}#mode .opt span.on{opacity:1;color:var(--ink)}
+#reset{position:absolute;right:18px;bottom:calc(env(safe-area-inset-bottom) + 30px)}
+#reset.cbtn{width:50px;height:50px}
+#tiltb.on{background:#33465b;color:#fff}
+#tilthud{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 30px);transform:translateX(-50%);display:none;align-items:center;gap:8px;background:#fff;border-radius:24px;padding:6px 6px 6px 12px;box-shadow:0 4px 16px rgba(40,60,90,.15);direction:rtl;font-weight:800;font-size:13px;z-index:5}
+#tilthud.on{display:flex}#ttxt{white-space:nowrap}.tilting #modeb svg{transform:rotate(90deg)}
+#tgauge{width:64px;height:8px;border-radius:5px;background:#e3e9f0;overflow:hidden;direction:ltr}#tgauge i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c9a27a,#f3e6d3);border-radius:5px}
+#tilthud button{border:none;background:#eef2f6;color:#33465b;font:inherit;font-weight:800;font-size:13px;border-radius:16px;padding:7px 11px;cursor:pointer}
+.tilting #mode,.tilting #reset{bottom:calc(env(safe-area-inset-bottom) + 84px)}
+#toast{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 120px);transform:translate(-50%,-10px);background:#33465b;color:#fff;padding:10px 18px;border-radius:22px;font-weight:700;font-size:15px;opacity:0;transition:.3s;pointer-events:none;direction:rtl;white-space:nowrap}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.sheet{position:absolute;inset:0;background:rgba(30,40,55,.35);display:none;align-items:center;justify-content:center;z-index:9;padding:20px}
+.sheet.on{display:flex}
+.card{background:#fff;border-radius:22px;max-width:380px;width:100%;padding:22px 22px 18px;direction:rtl;box-shadow:0 20px 50px rgba(0,0,0,.2);font-size:15px;line-height:1.55;color:#33465b}
+.card h2{margin:0 0 10px;font-size:22px;font-weight:800}
+.card ul{margin:0;padding-inline-start:18px}.card li{margin:5px 0}
+.card .ok{margin-top:16px;width:100%;border:none;border-radius:14px;background:#33465b;color:#fff;font:inherit;font-weight:800;font-size:16px;padding:12px;cursor:pointer}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eef1f4;font-weight:700}
+.seg{display:flex;background:#eef2f6;border-radius:12px;padding:3px}
+.seg button{border:none;background:transparent;font:inherit;font-size:13px;font-weight:800;color:#7d8ea0;padding:6px 11px;border-radius:9px;cursor:pointer}
+.seg button.on{background:#fff;color:#33465b;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+#err{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;direction:rtl;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+
+  <div id="brand" class="ui"><b>LatteLab</b><small>EARLY PREVIEW</small></div>
+
+  <div id="topbtns">
+    <button class="cbtn" id="eye" title="הסתר ממשק"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg></button>
+    <button class="cbtn" id="tiltb" title="מצב כד (הטיית הטלפון)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h10l1.2 2.6L20 6.5"/><path d="M15 7v11a2 2 0 01-2 2H7a2 2 0 01-2-2V7"/><path d="M5 10H3.6A1.6 1.6 0 002 11.6v3.8A1.6 1.6 0 003.6 17H5"/></svg></button>
+    <button class="cbtn ui" id="helpb" title="עזרה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 015.4 1c0 1.9-2.7 2.4-2.7 4"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg></button>
+    <button class="cbtn ui" id="setb" title="הגדרות"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></button>
+  </div>
+
+  <div class="vs ui" id="hs"><div class="lab">High</div><div class="trk"><div class="fl" style="background:transparent"></div><div class="th"><svg viewBox="0 0 40 40"><path d="M11 12h15l1.5 3.5L33 11l1.5 1.5-5.5 8.5V31a3 3 0 01-3 3H13a3 3 0 01-3-3V15z" fill="#3d4f63"/><path d="M10 16H7.5A2.5 2.5 0 005 18.5v6A2.5 2.5 0 007.5 27H10" fill="none" stroke="#3d4f63" stroke-width="2.4"/><rect x="11" y="10" width="15" height="3" rx="1.5" fill="#55687d"/></svg></div></div><div class="lab">Low</div></div>
+
+  <div class="vs ui" id="fs"><div class="lab">Flow</div><div class="trk"><div class="fl"></div><div class="th"></div></div><div class="lab" id="flowv">90%</div></div>
+
+  <div id="mode" class="ui"><button class="cbtn" id="modeb" title="כיוון מזיגה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><div class="opt"><span id="mS">Straight</span><span id="mN" class="on">Normal</span></div></div>
+
+  <button class="cbtn ui" id="reset" title="התחל מחדש"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 102.5-6"/><path d="M3.5 3.5V8H8"/></svg></button>
+
+  <div id="tilthud"><div id="tgauge"><i></i></div><span id="ttxt">מצב כד</span><button id="tcal">כיול</button><button id="toff">✕</button></div>
+  <div id="toast"></div>
+  <div id="err">הדפדפן הזה לא תומך ב-WebGL. נסו לפתוח ב-Chrome או Safari עדכני.</div>
+
+  <div class="sheet" id="help"><div class="card">
+    <h2>☕ איך מוזגים</h2>
+    <ul>
+      <li><b>גע ממושך בתוך הכוס</b> כדי למזוג חלב. הקצף מתפשט מנקודת המזיגה ודוחף את מה שכבר על הפנים.</li>
+      <li><b>רוזטה:</b> מזגו במרכז, ואז נענעו מצד לצד תוך כדי תזוזה איטית אחורה, ובסוף משיכה מהירה דרך הכל.</li>
+      <li><b>לב:</b> מזגו בנקודה אחת עד שנוצר עיגול גדול, ואז משכו קו מהיר דרכו.</li>
+      <li><b>גובה (High/Low):</b> מזיגה גבוהה צוללת מתחת לקרמה ומבהירה אותה. נמוכה מעלה קצף לבן.</li>
+      <li><b>Flow:</b> קצב הזרימה. <b>Normal/Straight:</b> זרם נטוי שדוחף קדימה, או זרם ישר.</li>
+      <li><b>מצב כד (🫗 למעלה):</b> הטלפון הוא הכד. מחזיקים בנוחות, לוחצים "כיול", ומטים את הקצה העליון קדימה כדי למזוג. הטיה קלה נותנת זרם דק שצולל, והטיה חזקה מעלה קצף. נדנוד פרק היד ימינה ושמאלה הוא הנענוע. לסיום דוחפים את הטלפון קדימה בתנועה קצרה וחדה, והזרם נמשך לשפה הנגדית (אפשר גם להחליק באגודל על הכוס). רגישות ההטיה נקבעת בהגדרות.</li>
+      <li>↺ מתחילים כוס חדשה. 👁 מסתיר את הממשק בשביל צילום.</li>
+    </ul>
+    <button class="ok" data-close>יאללה למזוג</button>
+  </div></div>
+
+  <div class="sheet" id="sensor"><div class="card">
+    <h2>🫗 מצב כד</h2>
+    <p style="margin:0 0 8px">כאן הדפדפן חוסם את חיישני התנועה. בתוך חלון התצוגה של Claude זה תמיד חסום, זו הגבלת אבטחה של הפלטפורמה.</p>
+    <ul>
+      <li><b>אייפון:</b> צריך לפתוח את הקובץ מכתובת https רגילה ב-Safari (למשל אחרי העלאה ל-Netlify Drop או GitHub Pages), ולאשר "תנועה וכיוון".</li>
+      <li><b>אנדרואיד:</b> אפשר לפתוח את קובץ ה-HTML ישירות ב-Chrome.</li>
+      <li>כדאי לנעול את סיבוב המסך.</li>
+    </ul>
+    <button class="ok" data-close>הבנתי</button>
+  </div></div>
+  <div class="sheet" id="settings"><div class="card">
+    <h2>הגדרות</h2>
+    <div class="row">איכות סימולציה<div class="seg" data-k="q"><button data-v="1">רגילה</button><button data-v="2">גבוהה</button></div></div>
+    <div class="row">קלייה<div class="seg" data-k="roast"><button data-v="0">בהירה</button><button data-v="1">כהה</button></div></div>
+    <div class="row">הצג זרם חלב<div class="seg" data-k="stream"><button data-v="1">כן</button><button data-v="0">לא</button></div></div>
+    <div class="row">רגישות הטיה<div class="seg" data-k="sens"><button data-v="0">נמוכה</button><button data-v="1">רגילה</button><button data-v="2">גבוהה</button></div></div>
+    <div class="row">משיכה בדחיפת הטלפון<div class="seg" data-k="track"><button data-v="1">כן</button><button data-v="0">לא</button></div></div>
+    <button class="ok" data-close>סגור</button>
+  </div></div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const app=$('#app');let canvas=$('#c');
+
+/* ---------- settings ---------- */
+const S={h:0.72, flow:0.9, mode:'N', q:(Math.min(screen.width,screen.height)>700?2:1), roast:0, stream:1, sens:1, track:1};
+try{const o=JSON.parse(localStorage.getItem('lattelab')||'{}');for(const k of ['q','roast','stream','sens','track'])if(o[k]!=null)S[k]=o[k];}catch(e){}
+const save=()=>{try{localStorage.setItem('lattelab',JSON.stringify({q:S.q,roast:S.roast,stream:S.stream,sens:S.sens,track:S.track}))}catch(e){}};
+
+
+/* ================= GPU engine (WebGL) ================= */
+function makeGL(canvas){
+const params={alpha:false,depth:false,stencil:false,antialias:false,preserveDrawingBuffer:false};
+let gl=canvas.getContext('webgl2',params), gl2=!!gl;
+if(!gl) gl=canvas.getContext('webgl',params)||canvas.getContext('experimental-webgl',params);
+if(!gl)return null;
+let TEX={};
+if(gl2){
+  gl.getExtension('EXT_color_buffer_float');gl.getExtension('EXT_color_buffer_half_float');gl.getExtension('OES_texture_float_linear');
+  TEX={internal:gl.RGBA16F,format:gl.RGBA,type:gl.HALF_FLOAT};
+}else{
+  const hf=gl.getExtension('OES_texture_half_float');gl.getExtension('OES_texture_half_float_linear');
+  TEX={internal:gl.RGBA,format:gl.RGBA,type:hf?hf.HALF_FLOAT_OES:gl.UNSIGNED_BYTE};
+}
+function fmtOK(){
+  const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texImage2D(gl.TEXTURE_2D,0,TEX.internal,4,4,0,TEX.format,TEX.type,null);
+  const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+  const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
+  gl.deleteTexture(t);gl.deleteFramebuffer(f);return ok;
+}
+if(!fmtOK()){ // fallback
+  if(gl2){TEX={internal:gl.RGBA32F,format:gl.RGBA,type:gl.FLOAT}; if(!fmtOK()) TEX={internal:gl.RGBA8,format:gl.RGBA,type:gl.UNSIGNED_BYTE};}
+  else TEX={internal:gl.RGBA,format:gl.RGBA,type:gl.UNSIGNED_BYTE};
+}
+if(TEX.type===gl.UNSIGNED_BYTE||!fmtOK())throw new Error('no float render targets');
+
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s)+'\n'+src);return s;}
+const VS=`precision highp float;attribute vec2 aPos;varying vec2 vUv,vL,vR,vT,vB;uniform vec2 tx;
+void main(){vUv=aPos*.5+.5;vL=vUv-vec2(tx.x,0.);vR=vUv+vec2(tx.x,0.);vT=vUv+vec2(0.,tx.y);vB=vUv-vec2(0.,tx.y);gl_Position=vec4(aPos,0.,1.);}`;
+const vs=sh(gl.VERTEX_SHADER,VS);
+function prog(fs){const p=gl.createProgram();gl.attachShader(p,vs);gl.attachShader(p,sh(gl.FRAGMENT_SHADER,'precision highp float;precision highp sampler2D;varying vec2 vUv,vL,vR,vT,vB;\n'+fs));
+  gl.bindAttribLocation(p,0,'aPos');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
+  const u={};const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);u[a.name]=gl.getUniformLocation(p,a.name);}
+  return {p,u};}
+
+const DISK=`const float RW=.49;
+bool inDisk(vec2 x){return length(x-.5)<RW;}
+vec2 toDisk(vec2 x){vec2 d=x-.5;float l=length(d);return l>RW-.002?.5+d*((RW-.002)/l):x;}
+uniform vec2 uSrc,uSnk;uniform float uQ,uQs,uEps,uEps2;
+vec2 pt1(vec2 x,vec2 s,float q,float ep){
+  vec2 c=vec2(.5);float R2=RW*RW,e2=ep*ep;
+  vec2 d1=x-s;vec2 v=d1/(dot(d1,d1)+e2);
+  vec2 a=s-c;float la=dot(a,a);
+  if(la>1e-6){vec2 d2=x-(c+a*(R2/la));v+=d2/(dot(d2,d2)+e2);}
+  v-=(x-c)/R2;
+  return v*q*.15915494;
+}
+vec2 srcVel(vec2 x){
+  if(uQ<=0.)return vec2(0.);
+  return pt1(x,uSrc,uQ+uQs,uEps)-pt1(x,uSnk,uQs,uEps2);
+}`;
+
+const P={
+ advect:prog(DISK+`uniform sampler2D uVel,uX;uniform float dt,diss,isVel;
+  void main(){
+    if(isVel>.5&&!inDisk(vUv)){gl_FragColor=vec4(0.);return;}
+    vec2 v=texture2D(uVel,vUv).xy+srcVel(vUv);
+    vec2 c=toDisk(vUv-dt*v);
+    vec4 r=texture2D(uX,c);
+    gl_FragColor=isVel>.5?vec4(r.xy*diss,0.,1.):r;
+  }`),
+ splatV:prog(`uniform sampler2D uX;uniform vec2 pt,force;uniform float rad,k;
+  void main(){vec2 d=vUv-pt;float g=exp(-dot(d,d)/(rad*rad));vec2 v=texture2D(uX,vUv).xy;v+=(force-v)*g*k;
+   if(length(vUv-.5)>.49)v=vec2(0.);gl_FragColor=vec4(v,0.,1.);}`),
+ splatD:prog(`uniform sampler2D uX;uniform vec2 pt;uniform float rad,foam,mixA,cut;
+  void main(){vec4 c=texture2D(uX,vUv);vec2 d=vUv-pt;float g=exp(-dot(d,d)/(rad*rad));
+   float hd=smoothstep(rad,rad*.55,length(d));c.r=max(c.r,foam*hd);
+   c.g=min(1.,c.g+mixA*exp(-dot(d,d)/(rad*rad*9.)));
+   gl_FragColor=c;}`),
+ div:prog(`uniform sampler2D uVel;uniform vec2 tx;
+  vec2 V(vec2 p){return length(p-.5)<.49?texture2D(uVel,p).xy:vec2(0.);}
+  void main(){float d=.5*((V(vR).x-V(vL).x)+(V(vT).y-V(vB).y));gl_FragColor=vec4(d,0.,0.,1.);}`),
+ pres:prog(`uniform sampler2D uP,uDiv;uniform vec2 tx;
+  void main(){float c=texture2D(uP,vUv).x;
+   float l=length(vL-.5)<.49?texture2D(uP,vL).x:c;float r=length(vR-.5)<.49?texture2D(uP,vR).x:c;
+   float t=length(vT-.5)<.49?texture2D(uP,vT).x:c;float b=length(vB-.5)<.49?texture2D(uP,vB).x:c;
+   gl_FragColor=vec4((l+r+t+b-texture2D(uDiv,vUv).x)*.25,0.,0.,1.);}`),
+ grad:prog(`uniform sampler2D uP,uVel;
+  void main(){if(length(vUv-.5)>.49){gl_FragColor=vec4(0.);return;}
+   float c=texture2D(uP,vUv).x;
+   float l=length(vL-.5)<.49?texture2D(uP,vL).x:c;float r=length(vR-.5)<.49?texture2D(uP,vR).x:c;
+   float t=length(vT-.5)<.49?texture2D(uP,vT).x:c;float b=length(vB-.5)<.49?texture2D(uP,vB).x:c;
+   vec2 v=texture2D(uVel,vUv).xy-.5*vec2(r-l,t-b);gl_FragColor=vec4(v,0.,1.);}`),
+ scale:prog(`uniform sampler2D uX;uniform float k;void main(){gl_FragColor=texture2D(uX,vUv)*k;}`),
+ init:prog(`uniform float seed;
+  float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7))+seed)*43758.5453);}
+  float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+1.),f.x),f.y);}
+  void main(){vec2 p=vUv*7.;float v=0.,a=.55;for(int i=0;i<5;i++){v+=a*n(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}
+   gl_FragColor=vec4(0.,0.,clamp((v-.25)*1.6,0.,1.),1.);}`),
+ show:prog(`uniform sampler2D uD;uniform vec2 res,C,pour,dtx;uniform float Ro,Ri,Rl,dpr,roast,pouring,streamR,tpp;
+  float sdBox(vec2 p,vec2 b,float r){vec2 q=abs(p)-b+r;return length(max(q,0.))+min(max(q.x,q.y),0.)-r;}
+  void main(){
+   vec2 p=gl_FragCoord.xy;vec3 bg=vec3(.965,.965,.957);
+   vec2 q=p-C;float d=length(q);
+   vec3 col=bg;
+   // cast shadow
+   float sd=length(q+vec2(Ro*.03,Ro*.06));
+   col*=1.-.16*smoothstep(Ro*1.18,Ro*.9,sd);
+   // handle (towards bottom of screen)
+   vec2 hp=q-vec2(0.,-Ro*1.08);
+   float hs=sdBox(hp+vec2(Ro*.015,Ro*.03),vec2(Ro*.15,Ro*.24),Ro*.12);
+   col*=1.-.14*smoothstep(Ro*.08,-Ro*.02,hs);
+   float hd=sdBox(hp,vec2(Ro*.14,Ro*.23),Ro*.11);
+   if(hd<0.){float sh=.93+.06*smoothstep(Ro*.14,-Ro*.1,hp.x)-.05*smoothstep(-Ro*.05,0.,hd);col=vec3(.985,.983,.978)*sh;}
+   col=mix(col,col*.9,smoothstep(1.5*dpr,0.,abs(hd))*.5);
+   // cup body / rim
+   if(d<Ro){
+     vec2 n=q/Ro;float lt=dot(normalize(q+1e-4),normalize(vec2(-.6,.8)));
+     float rim=smoothstep(Ro,Ri,d);
+     vec3 cer=vec3(.99,.988,.982);
+     float s=.955+.035*lt*smoothstep(Ri,Ro,d)+.03*smoothstep(Ro,Ro-2.*dpr,d)*0.;
+     col=cer*s;
+     col*=1.-.07*smoothstep(Ro-3.*dpr,Ro,d);
+     // inner wall
+     if(d<Ri){
+       float t=clamp((d-Rl)/max(Ri-Rl,1.),0.,1.);
+       float side=dot(normalize(q+1e-4),normalize(vec2(-.6,.8)));
+       vec3 wall=cer*(.82+.15*t-.06*side);
+       col=wall;
+       col=mix(col,cer*.94,smoothstep(Ri-2.*dpr,Ri,d));
+     }
+   }
+   // liquid
+   if(d<Rl+1.5*dpr){
+     vec2 uv=.5+q/(2.*Rl)*(.49/.5);
+     vec4 D=texture2D(uD,uv);
+     float r=d/Rl;
+     vec3 cD=roast>.5?vec3(.36,.18,.07):vec3(.50,.27,.11);
+     vec3 cL=roast>.5?vec3(.60,.36,.17):vec3(.80,.52,.27);
+     vec3 cr=mix(cD,cL,.25+.75*D.b);
+     cr=mix(cr,cD*.9,smoothstep(.7,1.,r)*.45);
+     vec3 milky=vec3(.85,.66,.45);
+     cr=mix(cr,milky,clamp(D.g,0.,1.)*.85);
+     float f=D.r;
+     float fx=texture2D(uD,uv+vec2(dtx.x,0.)).r-texture2D(uD,uv-vec2(dtx.x,0.)).r;
+     float fy=texture2D(uD,uv+vec2(0.,dtx.y)).r-texture2D(uD,uv-vec2(0.,dtx.y)).r;
+     float aa=length(vec2(fx,fy))/3.*tpp*.8+.004;
+     float m=smoothstep(.47-aa,.47+aa,f);
+     float halo=smoothstep(.2,.46,f)*(1.-m);
+     cr=mix(cr,mix(cr,milky*1.05,.5),halo);
+     // foam relief
+     float bump=clamp(-(fx*-.6+fy*.8)*2.2,-1.,1.);
+     vec3 foamC=vec3(.995,.975,.935)*(.965+.035*bump)*(1.-.05*smoothstep(.55,1.,r));
+     float thick=smoothstep(.47,.95,f);foamC=mix(mix(cr,foamC,.55),foamC,thick);
+     vec3 lq=mix(cr,foamC,m);
+     // surface gloss & wall shadow
+     float side=dot(q/max(d,1.),normalize(vec2(-.6,.8)));
+     lq*=1.-.16*smoothstep(.80,1.,r)*(.5+.5*side);
+     lq+=vec3(.06)*smoothstep(.9,1.,r)*max(-side,0.)*(1.-m);
+     float hl=exp(-pow(length(q/Rl-vec2(-.35,.42))/.32,2.));
+     lq+=vec3(.05)*hl;
+     float edge=smoothstep(Rl+1.2*dpr,Rl-.6*dpr,d);
+     col=mix(col,lq,edge);
+     col=mix(col,vec3(1.),.25*smoothstep(1.6*dpr,0.,abs(d-Rl))); // meniscus
+   }
+   // milk stream
+   if(pouring>0.){
+     float sd2=length(p-pour);
+     col=mix(col,col*.82,smoothstep(streamR*2.2,streamR*.8,length(p-pour+vec2(streamR*.5,-streamR*.6)))*.35*pouring);
+     float s=smoothstep(streamR+1.2*dpr,streamR-.8*dpr,sd2);
+     vec3 sc=vec3(.99,.975,.95)*(.93+.07*(p.y-pour.y+streamR)/(2.*streamR));
+     col=mix(col,sc,s*pouring);
+   }
+   gl_FragColor=vec4(col,1.);
+  }`)
+};
+
+
+const quad=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,quad);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(0);
+
+function tex(w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D,0,TEX.internal,w,h,0,TEX.format,TEX.type,null);
+  const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+  gl.viewport(0,0,w,h);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  return {t,f,w,h};}
+function dbl(w,h){let a=tex(w,h),b=tex(w,h);return {get r(){return a},get w(){return b},swap(){[a,b]=[b,a]},W:w,H:h};}
+let vel,prs,dvg,dye,N,DN;
+function use(pr,tgt,txw,txh){gl.useProgram(pr.p);if(pr.u.tx)gl.uniform2f(pr.u.tx,1/txw,1/txh);
+  if(tgt){gl.bindFramebuffer(gl.FRAMEBUFFER,tgt.f);gl.viewport(0,0,tgt.w,tgt.h);}else{gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight);}}
+function bindT(pr,name,t,unit){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t.t);gl.uniform1i(pr.u[name],unit);}
+const draw=()=>gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+return {
+  kind:'gl',
+  reset(){
+    N=S.q>1?160:128; DN=S.q>1?1024:768;DN=Math.min(DN,gl.getParameter(gl.MAX_TEXTURE_SIZE));
+    vel=dbl(N,N);prs=dbl(N,N);dvg=tex(N,N);dye=dbl(DN,DN);
+    use(P.init,dye.w,DN,DN);gl.uniform1f(P.init.u.seed,Math.random()*100);draw();dye.swap();
+  },
+  resize(){},
+  step(p){
+    if(p.amt>.01){
+      use(P.splatV,vel.w,N,N);bindT(P.splatV,'uX',vel.r,0);
+      gl.uniform2f(P.splatV.u.pt,p.su,p.sv);gl.uniform2f(P.splatV.u.force,p.fu,p.fv);gl.uniform1f(P.splatV.u.rad,p.drad);gl.uniform1f(P.splatV.u.k,p.k);draw();vel.swap();
+    }
+    const setSrc=pr=>{gl.uniform2f(pr.u.uSrc,p.su+p.off[0],p.sv+p.off[1]);gl.uniform2f(pr.u.uSnk,p.su,p.sv);gl.uniform1f(pr.u.uQ,p.Q);gl.uniform1f(pr.u.uQs,p.Qs);gl.uniform1f(pr.u.uEps,p.eps);gl.uniform1f(pr.u.uEps2,p.eps2);};
+    use(P.advect,vel.w,N,N);bindT(P.advect,'uVel',vel.r,0);bindT(P.advect,'uX',vel.r,1);setSrc(P.advect);
+    gl.uniform1f(P.advect.u.dt,p.dt);gl.uniform1f(P.advect.u.diss,p.diss);gl.uniform1f(P.advect.u.isVel,1);draw();vel.swap();
+    use(P.div,dvg,N,N);bindT(P.div,'uVel',vel.r,0);draw();
+    use(P.scale,prs.w,N,N);bindT(P.scale,'uX',prs.r,0);gl.uniform1f(P.scale.u.k,.85);draw();prs.swap();
+    use(P.pres,null,N,N);bindT(P.pres,'uDiv',dvg,1);
+    for(let i=0;i<24;i++){gl.bindFramebuffer(gl.FRAMEBUFFER,prs.w.f);gl.viewport(0,0,N,N);bindT(P.pres,'uP',prs.r,0);draw();prs.swap();}
+    use(P.grad,vel.w,N,N);bindT(P.grad,'uP',prs.r,0);bindT(P.grad,'uVel',vel.r,1);draw();vel.swap();
+    use(P.advect,dye.w,DN,DN);bindT(P.advect,'uVel',vel.r,0);bindT(P.advect,'uX',dye.r,1);setSrc(P.advect);
+    gl.uniform1f(P.advect.u.dt,p.dt);gl.uniform1f(P.advect.u.diss,1);gl.uniform1f(P.advect.u.isVel,0);draw();dye.swap();
+    if(p.amt>.01){
+      use(P.splatD,null,DN,DN);
+      for(const [x,y] of p.deps){
+        gl.bindFramebuffer(gl.FRAMEBUFFER,dye.w.f);gl.viewport(0,0,DN,DN);bindT(P.splatD,'uX',dye.r,0);
+        gl.uniform2f(P.splatD.u.pt,x,y);gl.uniform1f(P.splatD.u.rad,p.rad);gl.uniform1f(P.splatD.u.foam,p.foam);
+        gl.uniform1f(P.splatD.u.mixA,p.mixA);draw();dye.swap();}
+    }
+  },
+  render(r){
+    use(P.show,null,1,1);bindT(P.show,'uD',dye.r,0);
+    const u=P.show.u,Hp=canvas.height;
+    gl.uniform2f(u.res,canvas.width,Hp);gl.uniform2f(u.C,r.cx*r.dpr,Hp-r.cy*r.dpr);
+    gl.uniform1f(u.Ro,r.Ro*r.dpr);gl.uniform1f(u.Ri,r.Ri*r.dpr);gl.uniform1f(u.Rl,r.Rl*r.dpr);gl.uniform1f(u.dpr,r.dpr);
+    gl.uniform2f(u.dtx,1.5/DN,1.5/DN);gl.uniform1f(u.tpp,DN*.98/(2*r.Rl*r.dpr));gl.uniform1f(u.roast,r.roast);
+    gl.uniform2f(u.pour,r.px*r.dpr,Hp-r.py*r.dpr);
+    gl.uniform1f(u.pouring,r.pouring);gl.uniform1f(u.streamR,r.streamR*r.dpr);
+    draw();
+  }
+};
+}
+
+/* ================= Vector engine (no WebGL needed) =================
+   Foam = closed outlines carried by the flow (Lagrangian contours).
+   Flow = analytic pour source/sink with wall images + decaying vortex pairs from the moving stream.
+   Drawing = native Canvas2D paths → smooth at 60fps even without JIT/GPU compute. */
+function makeCPU(canvas){
+  const ctx=canvas.getContext('2d');
+  const VP=window.__V={gain:.9,tau:.32,d:.026};const RW=.49,RW2=RW*RW,CORE=.024,CORE2=CORE*CORE,CUT2=(CORE*9)**2;
+  const N=64;const gu=new Float32Array(N*N),gv=new Float32Array(N*N),gu2=new Float32Array(N*N),gv2=new Float32Array(N*N),pr=new Float32Array(N*N),pr2=new Float32Array(N*N),dv=new Float32Array(N*N),mask=new Uint8Array(N*N);
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){const x=(i+.5)/N-.5,y=(j+.5)/N-.5;mask[j*N+i]=x*x+y*y<RW2?1:0;}
+  function samp(a,x,y){let fx=x*N-.5,fy=y*N-.5;if(fx<0)fx=0;if(fy<0)fy=0;if(fx>N-1.001)fx=N-1.001;if(fy>N-1.001)fy=N-1.001;const i=fx|0,j=fy|0,tx=fx-i,ty=fy-j,k=j*N+i;return (a[k]*(1-tx)+a[k+1]*tx)*(1-ty)+(a[k+N]*(1-tx)+a[k+N+1]*tx)*ty;}
+  let foam=[],mix=[],blobs=[],acc=0,crema=null,cremaKey='',cup=null,cupKey='',over=null,overKey='',total=0,frameN=0;
+  // flow parameters for the current step
+  let F={Q:0,Qs:0,sx:.5,sy:.5,kx:.5,ky:.5,e1:.02,e2:.04};
+  let VX=0,VY=0,useGrid=true;
+  function vel(x,y){
+    let vx=0,vy=0;
+    if(F.Q>0){
+      // source (ahead) with image
+      let s=(F.Q+F.Qs)*.15915494,e=F.e1*F.e1,dx=x-F.sx,dy=y-F.sy,d=dx*dx+dy*dy+e;vx+=s*dx/d;vy+=s*dy/d;
+      let ax=F.sx-.5,ay=F.sy-.5,la=ax*ax+ay*ay;
+      if(la>1e-6){dx=x-(.5+ax*RW2/la);dy=y-(.5+ay*RW2/la);d=dx*dx+dy*dy+e;vx+=s*dx/d;vy+=s*dy/d;}
+      vx-=s*(x-.5)/RW2;vy-=s*(y-.5)/RW2;
+      if(F.Qs>0){ // sink at impact point
+        s=-F.Qs*.15915494;e=F.e2*F.e2;dx=x-F.kx;dy=y-F.ky;d=dx*dx+dy*dy+e;vx+=s*dx/d;vy+=s*dy/d;
+        ax=F.kx-.5;ay=F.ky-.5;la=ax*ax+ay*ay;
+        if(la>1e-6){dx=x-(.5+ax*RW2/la);dy=y-(.5+ay*RW2/la);d=dx*dx+dy*dy+e;vx+=s*dx/d;vy+=s*dy/d;}
+        vx-=s*(x-.5)/RW2;vy-=s*(y-.5)/RW2;
+      }
+    }
+    if(useGrid){vx+=samp(gu,x,y);vy+=samp(gv,x,y);}
+    VX=vx;VY=vy;
+  }
+  function circle(x,y,r,n){const a=[];for(let i=0;i<n;i++){const t=i/n*6.2831853;a.push(x+Math.cos(t)*r,y+Math.sin(t)*r);}return mk(a);}
+  function mk(a){const p={a,x0:0,y0:0,x1:0,y1:0,area:0};bbox(p);return p;}
+  function bbox(p){const a=p.a;let x0=1,y0=1,x1=0,y1=0,ar=0;
+    for(let i=0,n=a.length;i<n;i+=2){const x=a[i],y=a[i+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+      const j=(i+2)%n;ar+=x*a[j+1]-a[j]*y;}
+    p.x0=x0;p.y0=y0;p.x1=x1;p.y1=y1;p.area=ar*.5;}
+  function inside(p,x,y){if(x<p.x0||x>p.x1||y<p.y0||y>p.y1)return false;
+    const a=p.a,n=a.length;let c=false;
+    for(let i=0,j=n-2;i<n;j=i,i+=2){const yi=a[i+1],yj=a[j+1];
+      if((yi>y)!==(yj>y)&&x<(a[j]-a[i])*(y-yi)/(yj-yi)+a[i])c=!c;}
+    return c;}
+  function covered(list,x,y){for(let i=list.length-1;i>=0;i--)if(inside(list[i],x,y))return true;return false;}
+  function advect(list,dt,dsMax,dsMin){
+    const mr=RW-.0015,mr2=mr*mr;
+    for(const p of list){const a=p.a;
+      for(let i=0;i<a.length;i+=2){let x=a[i],y=a[i+1];
+        vel(x,y);const hx=x+VX*dt*.5,hy=y+VY*dt*.5;vel(hx,hy);x+=VX*dt;y+=VY*dt;
+        const dx=x-.5,dy=y-.5,l2=dx*dx+dy*dy;if(l2>mr2){const k=mr/Math.sqrt(l2);x=.5+dx*k;y=.5+dy*k;}
+        a[i]=x;a[i+1]=y;}
+      // resample: split long edges, drop crowded points
+      const o=[],n=a.length;let lx=a[0],ly=a[1];o.push(lx,ly);
+      for(let i=2;i<=n;i+=2){const x=a[i%n],y=a[(i+1)%n],dx=x-lx,dy=y-ly,d=Math.sqrt(dx*dx+dy*dy);
+        if(d>dsMax){const m=Math.ceil(d/dsMax);for(let k=1;k<m;k++)o.push(lx+dx*k/m,ly+dy*k/m);}
+        if(i<n&&(d>dsMin||o.length<6)){o.push(x,y);lx=x;ly=y;}else if(i<n&&d<=dsMin){/*skip*/}
+      }
+      p.a=o;bbox(p);}
+  }
+  function cull(list){
+    // remove outlines fully inside another one (the flow keeps them inside forever) and swallowed specks
+    for(let i=list.length-1;i>=0;i--){const p=list[i];
+      if(Math.abs(p.area)<2.5e-5){list.splice(i,1);continue;}
+      const a=p.a,n=a.length/2,st=Math.max(1,Math.floor(n/10));
+      for(let j=0;j<list.length;j++){if(j===i)continue;const q=list[j];
+        if(p.x0<q.x0||p.x1>q.x1||p.y0<q.y0||p.y1>q.y1)continue;
+        let all=true;for(let k=0;k<n;k+=st){if(!inside(q,a[2*k],a[2*k+1])){all=false;break;}}
+        if(all){list.splice(i,1);break;}}
+    }
+  }
+  function makeCrema(dark){
+    const n=160,c=document.createElement('canvas');c.width=c.height=n;const g=c.getContext('2d'),im=g.createImageData(n,n),d=im.data;
+    const seed=Math.random()*100,h=(x,y)=>{const s=Math.sin(x*127.1+y*311.7+seed)*43758.5453;return s-Math.floor(s);};
+    const vn=(x,y)=>{const i=Math.floor(x),j=Math.floor(y);let fx=x-i,fy=y-j;fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);
+      const a=h(i,j),b=h(i+1,j),cc=h(i,j+1),e=h(i+1,j+1);return (a+(b-a)*fx)*(1-fy)+(cc+(e-cc)*fx)*fy;};
+    const cD=dark?[.36,.18,.07]:[.50,.27,.11],cL=dark?[.60,.36,.17]:[.80,.52,.27];
+    for(let j=0;j<n;j++)for(let i=0;i<n;i++){let x=i/n*7,y=j/n*7,v=0,a=.55;
+      for(let o=0;o<5;o++){v+=a*vn(x,y);x=x*2.03+1.7;y=y*2.03+9.2;a*=.5;}
+      const t=.25+.75*Math.max(0,Math.min(1,(v-.25)*1.6)),k=(j*n+i)*4;
+      for(let q=0;q<3;q++)d[k+q]=(cD[q]+(cL[q]-cD[q])*t)*255;d[k+3]=255;}
+    g.putImageData(im,0,0);return c;
+  }
+  function buildCup(r){
+    const key=[canvas.width,canvas.height,r.cx,r.cy,r.Ro,r.dpr].join();if(key===cupKey)return;cupKey=key;
+    cup=document.createElement('canvas');cup.width=canvas.width;cup.height=canvas.height;
+    const c=cup.getContext('2d'),d=r.dpr,X=r.cx*d,Y=r.cy*d,Ro=r.Ro*d,Ri=r.Ri*d;
+    c.fillStyle='#f6f6f4';c.fillRect(0,0,cup.width,cup.height);
+    let g=c.createRadialGradient(X+Ro*.03,Y+Ro*.06,Ro*.85,X+Ro*.03,Y+Ro*.06,Ro*1.2);
+    g.addColorStop(0,'rgba(60,55,50,.17)');g.addColorStop(1,'rgba(60,55,50,0)');c.fillStyle=g;c.fillRect(0,0,cup.width,cup.height);
+    const hw=Ro*.28,hh=Ro*.46,hx=X-hw/2,hy=Y+Ro*1.08-hh/2;
+    c.fillStyle='rgba(60,55,50,.10)';rr(c,hx+Ro*.02,hy+Ro*.04,hw,hh,Ro*.11);c.fill();
+    g=c.createLinearGradient(hx,0,hx+hw,0);g.addColorStop(0,'#fbfaf7');g.addColorStop(1,'#e4e2dd');
+    c.fillStyle=g;rr(c,hx,hy,hw,hh,Ro*.11);c.fill();c.strokeStyle='rgba(0,0,0,.06)';c.lineWidth=d;c.stroke();
+    g=c.createLinearGradient(X-Ro*.6,Y-Ro*.8,X+Ro*.6,Y+Ro*.8);g.addColorStop(0,'#fdfcf9');g.addColorStop(1,'#e9e7e2');
+    c.fillStyle=g;c.beginPath();c.arc(X,Y,Ro,0,7);c.fill();c.strokeStyle='rgba(0,0,0,.07)';c.lineWidth=1.5*d;c.stroke();
+    g=c.createRadialGradient(X,Y,Ri*.7,X,Y,Ri);g.addColorStop(0,'#cfccc6');g.addColorStop(.85,'#e9e7e2');g.addColorStop(1,'#f3f1ed');
+    c.fillStyle=g;c.beginPath();c.arc(X,Y,Ri,0,7);c.fill();
+  }
+  function buildOver(dark){ // rim darkening, wall shade and gloss, in a unit-size image
+    const key=String(dark);if(key===overKey)return;overKey=key;
+    const n=256;over=document.createElement('canvas');over.width=over.height=n;const c=over.getContext('2d'),h=n/2;
+    let g=c.createRadialGradient(h,h,h*.62,h,h,h);g.addColorStop(0,'rgba(70,35,10,0)');g.addColorStop(1,dark?'rgba(40,18,5,.55)':'rgba(70,35,10,.45)');
+    c.fillStyle=g;c.fillRect(0,0,n,n);
+    g=c.createLinearGradient(n*.2,n*.1,n*.8,n*.9);g.addColorStop(0,'rgba(0,0,0,.10)');g.addColorStop(.45,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(255,255,255,.05)');
+    c.globalCompositeOperation='source-atop';c.fillStyle=g;c.beginPath();c.arc(h,h,h,0,7);c.fill();c.globalCompositeOperation='source-over';
+    g=c.createRadialGradient(h-h*.35,h-h*.42,0,h-h*.35,h-h*.42,h*.4);g.addColorStop(0,'rgba(255,255,255,.13)');g.addColorStop(1,'rgba(255,255,255,0)');
+    c.fillStyle=g;c.fillRect(0,0,n,n);
+  }
+  function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+  function addPath(path,list){for(const p of list){const a=p.a;path.moveTo(a[0],a[1]);for(let i=2;i<a.length;i+=2)path.lineTo(a[i],a[i+1]);path.closePath();}}
+  return {
+    kind:'vector',
+    reset(){foam=[];mix=[];gu.fill(0);gv.fill(0);pr.fill(0);pr2.fill(0);crema=null;},
+    resize(){cupKey='';},
+    step(p){
+      const dt=p.dt;frameN++;
+      F.Q=p.Q;F.Qs=p.Qs;F.sx=p.su+p.off[0];F.sy=p.sv+p.off[1];F.kx=p.su;F.ky=p.sv;F.e1=p.eps;F.e2=p.eps2;
+      // stream drag + pitcher push on a coarse velocity grid (same scheme as the GPU engine)
+      const n=N;
+      if(p.amt>.01){const r=p.drad,r2=r*r,i0=Math.max(0,((p.su-3*r)*n)|0),i1=Math.min(n-1,((p.su+3*r)*n)|0),j0=Math.max(0,((p.sv-3*r)*n)|0),j1=Math.min(n-1,((p.sv+3*r)*n)|0);
+        for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const k=j*n+i;if(!mask[k])continue;const dx=(i+.5)/n-p.su,dy=(j+.5)/n-p.sv,g=Math.exp(-(dx*dx+dy*dy)/r2)*p.k;
+          gu[k]+=(p.fu-gu[k])*g;gv[k]+=(p.fv-gv[k])*g;}}
+      for(let j=0;j<n;j++)for(let i=0;i<n;i++){const k=j*n+i;if(!mask[k]){gu2[k]=0;gv2[k]=0;continue;}
+        const x=(i+.5)/n,y=(j+.5)/n;vel(x,y);
+        let bx=x-dt*VX,by=y-dt*VY;const ddx=bx-.5,ddy=by-.5,l2=ddx*ddx+ddy*ddy,mr=RW-.002;if(l2>mr*mr){const kk=mr/Math.sqrt(l2);bx=.5+ddx*kk;by=.5+ddy*kk;}
+        gu2[k]=samp(gu,bx,by)*p.diss;gv2[k]=samp(gv,bx,by)*p.diss;}
+      gu.set(gu2);gv.set(gv2);
+      for(let j=0;j<n;j++)for(let i=0;i<n;i++){const k=j*n+i;if(!mask[k]){dv[k]=0;continue;}
+        const uR=i<n-1&&mask[k+1]?gu[k+1]:0,uL=i>0&&mask[k-1]?gu[k-1]:0,vT=j<n-1&&mask[k+n]?gv[k+n]:0,vB=j>0&&mask[k-n]?gv[k-n]:0;
+        dv[k]=.5*(uR-uL+vT-vB);pr[k]*=.85;}
+      for(let it=0;it<18;it++){
+        for(let j=1;j<n-1;j++)for(let i=1;i<n-1;i++){const k=j*n+i;if(!mask[k])continue;const c=pr[k];
+          pr2[k]=((mask[k+1]?pr[k+1]:c)+(mask[k-1]?pr[k-1]:c)+(mask[k+n]?pr[k+n]:c)+(mask[k-n]?pr[k-n]:c)-dv[k])*.25;}
+        pr.set(pr2);}
+      for(let j=1;j<n-1;j++)for(let i=1;i<n-1;i++){const k=j*n+i;if(!mask[k])continue;const c=pr[k];
+        gu[k]-=.5*((mask[k+1]?pr[k+1]:c)-(mask[k-1]?pr[k-1]:c));gv[k]-=.5*((mask[k+n]?pr[k+n]:c)-(mask[k-n]?pr[k-n]:c));}
+      // move outlines (detail adapts to the amount of foam so the frame cost stays flat)
+      const ds=.0065*Math.max(1,Math.pow(total/3500,.6));
+      advect(foam,dt,ds,ds*.3);advect(mix,dt,ds*1.6,ds*.5);
+      // new milk surfaces only where the stream hits crema
+      if(p.amt>.01){
+        if(p.foam>.5){const r=p.rad*1.05;
+          for(const [x,y] of p.deps){
+            let need=!covered(foam,x,y);
+            if(!need)for(let k=0;k<4&&!need;k++){const t=k*1.5708+frameN;need=!covered(foam,x+Math.cos(t)*r*.75,y+Math.sin(t)*r*.75);}
+            if(need)foam.push(circle(x,y,r,14));}
+        }else{const r=p.rad*2.6,[x,y]=p.deps[p.deps.length-1];
+          if(!covered(mix,x,y))mix.push(circle(x,y,r,16));}
+      }
+      if(frameN%4===0){cull(foam);cull(mix);}
+      total=0;for(const q of foam)total+=q.a.length/2;for(const q of mix)total+=q.a.length/2;
+    },
+    render(r){
+      if(canvas.width!==Math.round(innerWidth*r.dpr)||canvas.height!==Math.round(innerHeight*r.dpr)){canvas.width=Math.round(innerWidth*r.dpr);canvas.height=Math.round(innerHeight*r.dpr);cupKey='';}
+      buildCup(r);ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(cup,0,0);
+      const dark=r.roast>.5;
+      if(!crema||cremaKey!==String(dark)){crema=makeCrema(dark);cremaKey=String(dark);}
+      buildOver(dark);
+      const d=r.dpr,X=r.cx*d,Y=r.cy*d,Rl=r.Rl*d;
+      ctx.save();ctx.beginPath();ctx.arc(X,Y,Rl,0,7);ctx.clip();
+      ctx.drawImage(crema,X-Rl,Y-Rl,2*Rl,2*Rl);
+      // map simulation space (0..1, y up) onto the liquid disk
+      const s=Rl/RW;ctx.setTransform(s,0,0,-s,X-.5*s,Y+.5*s);
+      ctx.lineJoin='round';
+      if(mix.length){const mp=new Path2D();addPath(mp,mix);
+        ctx.fillStyle='rgba(220,170,120,.45)';ctx.fill(mp);ctx.lineWidth=7*d/s;ctx.strokeStyle='rgba(220,170,120,.18)';ctx.stroke(mp);}
+      if(foam.length){const fp=new Path2D();addPath(fp,foam);
+        ctx.lineWidth=4.5*d/s;ctx.strokeStyle='rgba(205,150,95,.35)';ctx.stroke(fp);
+        ctx.lineWidth=2*d/s;ctx.strokeStyle='rgba(240,215,180,.75)';ctx.stroke(fp);
+        ctx.fillStyle='#fdf7ec';ctx.fill(fp);}
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.drawImage(over,X-Rl,Y-Rl,2*Rl,2*Rl);
+      ctx.restore();
+      ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=1.2*d;ctx.beginPath();ctx.arc(X,Y,Rl,0,7);ctx.stroke();
+      if(r.pouring>0){const sx=r.px*d,sy=r.py*d,sr=r.streamR*d;
+        ctx.globalAlpha=.25*r.pouring;ctx.fillStyle='#5a3a20';ctx.beginPath();ctx.arc(sx-sr*.5,sy+sr*.6,sr*1.4,0,7);ctx.fill();
+        ctx.globalAlpha=r.pouring;ctx.fillStyle='#fbf7f0';ctx.beginPath();ctx.arc(sx,sy,sr,0,7);ctx.fill();ctx.globalAlpha=1;}
+    },
+    stats(){return {polys:foam.length+mix.length,pts:total};}
+  };
+}
+
+
+/* ================= choose engine ================= */
+let eng=null;
+const forceCPU=/[?&#]cpu/.test(location.href);
+if(!forceCPU){try{eng=makeGL(canvas);}catch(e){console.warn('WebGL failed, using CPU',e);eng=null;}}
+if(!eng){const c2=document.createElement('canvas');c2.id='c2';canvas.replaceWith(c2);canvas=c2;eng=makeCPU(canvas);}
+
+let fill=0, full=false;
+function resetCup(){eng.reset();fill=0;full=false;}
+/* ---------- layout ---------- */
+let W,H,dpr,cx,cy,Ro,Ri;
+function layout(){
+  dpr=Math.min(window.devicePixelRatio||1,2.5);
+  W=innerWidth;H=innerHeight;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+  Ro=Math.min(W*.42,H*.30,330);Ri=Ro*.86;cx=W/2;cy=H*.47;
+  const top=cy-Ro*1.05, len=Math.min(Ro*1.05,260);
+  for(const [id,x] of [['#hs',6],['#fs',W-62]]){const e=$(id);e.style.left=x+'px';e.style.top=Math.max(110,top-10)+'px';e.querySelector('.trk').style.height=len+'px';}
+  syncSliders();eng.resize();
+}
+const Rl=()=>Ri*(.80+.20*Math.min(fill,1));
+
+/* ---------- sliders ---------- */
+function slider(id,key,onch){
+  const trk=$(id+' .trk');
+  const set=e=>{const r=trk.getBoundingClientRect();S[key]=Math.max(0,Math.min(1,1-(e.clientY-r.top)/r.height));onch&&onch();syncSliders();};
+  trk.addEventListener('pointerdown',e=>{e.stopPropagation();trk.setPointerCapture(e.pointerId);set(e);
+    const mv=ev=>set(ev),up=()=>{trk.removeEventListener('pointermove',mv);trk.removeEventListener('pointerup',up);trk.removeEventListener('pointercancel',up);};
+    trk.addEventListener('pointermove',mv);trk.addEventListener('pointerup',up);trk.addEventListener('pointercancel',up);});
+}
+function syncSliders(){
+  $('#hs .th').style.bottom=(S.h*100)+'%';
+  $('#fs .th').style.bottom=(S.flow*100)+'%';$('#fs .fl').style.height=(S.flow*100)+'%';
+  $('#flowv').textContent=Math.round(S.flow*100)+'%';
+}
+slider('#hs','h');slider('#fs','flow');
+
+/* ---------- buttons ---------- */
+const stop=e=>e.stopPropagation();
+document.querySelectorAll('button,.sheet,.vs').forEach(b=>b.addEventListener('pointerdown',stop));
+$('#eye').onclick=()=>app.classList.toggle('hidden');
+$('#helpb').onclick=()=>$('#help').classList.add('on');
+$('#setb').onclick=()=>{syncSeg();$('#settings').classList.add('on');};
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.sheet').classList.remove('on'));
+document.querySelectorAll('.sheet').forEach(s=>s.addEventListener('click',e=>{if(e.target===s)s.classList.remove('on')}));
+function syncSeg(){document.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(S[g.dataset.k])===b.dataset.v)));}
+document.querySelectorAll('.seg').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  const k=g.dataset.k,v=+b.dataset.v;const old=S[k];S[k]=v;save();syncSeg();if(k==='q'&&old!==v)resetCup();}));
+$('#modeb').onclick=()=>{S.mode=S.mode==='N'?'S':'N';$('#mN').classList.toggle('on',S.mode==='N');$('#mS').classList.toggle('on',S.mode==='S');
+  };
+$('#reset').onclick=()=>{resetCup();toast('');};
+let tt;function toast(m){const t=$('#toast');if(!m){t.classList.remove('on');return;}t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2400);}
+
+/* ---------- pointer ---------- */
+const ptr={down:false,id:null,x:0,y:0,u:.5,v:.5,pu:.5,pv:.5,vu:0,vv:0,fresh:true,amt:0};
+function toUV(x,y){const R=Rl();let dx=(x-cx)/(2*R)*.98,dy=-(y-cy)/(2*R)*.98;const l=Math.hypot(dx,dy),m=.47;if(l>m){dx*=m/l;dy*=m/l;}return [.5+dx,.5+dy];}
+canvas.addEventListener('pointerdown',e=>{
+  if(Math.hypot(e.clientX-cx,e.clientY-cy)>Ri*1.02)return;
+  if(tilt.on){tilt.thumb={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);return;}
+  if(full){toast('הכוס מלאה! לחצו ↺ לכוס חדשה');return;}
+  ptr.down=true;ptr.id=e.pointerId;ptr.x=e.clientX;ptr.y=e.clientY;ptr.fresh=true;canvas.setPointerCapture(e.pointerId);
+  $('#help').classList.remove('on');
+});
+canvas.addEventListener('pointermove',e=>{if(tilt.thumb&&e.pointerId===tilt.thumb.id){tilt.thumb.x=e.clientX;tilt.thumb.y=e.clientY;return;}if(ptr.down&&e.pointerId===ptr.id){ptr.x=e.clientX;ptr.y=e.clientY;}});
+const up=e=>{if(tilt.thumb&&e.pointerId===tilt.thumb.id){tilt.thumb=null;return;}if(e.pointerId===ptr.id&&!tilt.on)ptr.down=false;};
+canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);canvas.addEventListener('lostpointercapture',up);
+
+
+/* ---------- pitcher mode: the phone is the milk jug ---------- */
+// Tilt (orientation) drives the pour exactly as in the first version: tip = flow, rock the wrist = wiggle.
+// The accelerometer is used only to recognise one gesture: a quick push forward = pull-through to the far rim.
+const tilt={on:false,thumb:null,b:null,g:null,b0:null,g0:null,last:0,flow:0,
+  pt:{on:false,t:0,cool:0,hits:0},lt:0};
+const SENS={0:[12,62],1:[9,50],2:[7,42]};                // low / normal / high (high = first version)
+function onOri(e){if(e.beta==null)return;tilt.last=performance.now();
+  if(tilt.b==null){tilt.b=e.beta;tilt.g=e.gamma;}
+  tilt.b+=(e.beta-tilt.b)*.5;tilt.g+=(e.gamma-tilt.g)*.6;
+  if(tilt.b0==null){tilt.b0=tilt.b;tilt.g0=tilt.g;}}
+function onMot(e){const A=e.acceleration;if(!S.track||!A||A.y==null||tilt.b==null)return;
+  if(tilt.pt.on||tilt.pt.cool>0||tilt.flow<.2){tilt.pt.hits=0;return;}
+  const br=tilt.b*Math.PI/180,af=A.y*Math.cos(br)-(A.z||0)*Math.sin(br);   // horizontal push along the spout
+  tilt.pt.hits=Math.abs(af)>4.2?tilt.pt.hits+1:0;
+  if(tilt.pt.hits>=2){tilt.pt.on=true;tilt.pt.t=0;tilt.pt.hits=0;}}
+function calibrate(){tilt.b0=tilt.b;tilt.g0=tilt.g;toast('כויל ✓ הטו קדימה כדי למזוג');}
+async function startTilt(){
+  try{
+    if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
+      try{await DeviceMotionEvent.requestPermission();}catch(e){}}
+    if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+      const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')throw new Error('denied');}
+  }catch(e){toast('אין הרשאה לחיישני תנועה');return;}
+  tilt.b=tilt.g=tilt.b0=tilt.g0=null;
+  addEventListener('deviceorientation',onOri);addEventListener('devicemotion',onMot);
+  await new Promise(r=>setTimeout(r,900));
+  if(tilt.b==null){removeEventListener('deviceorientation',onOri);removeEventListener('devicemotion',onMot);sensorHelp();return;}
+  tilt.on=true;app.classList.add('tilting');$('#tiltb').classList.add('on');$('#tilthud').classList.add('on');
+  ptr.down=false;calibrate();
+}
+function stopTilt(){tilt.on=false;tilt.thumb=null;removeEventListener('deviceorientation',onOri);removeEventListener('devicemotion',onMot);ptr.down=false;
+  app.classList.remove('tilting');$('#tiltb').classList.remove('on');$('#tilthud').classList.remove('on');S.h=.72;S.flow=.9;syncSliders();}
+function sensorHelp(){$('#sensor').classList.add('on');}
+$('#tiltb').onclick=()=>{tilt.on?stopTilt():startTilt();};
+$('#tcal').onclick=calibrate;$('#toff').onclick=stopTilt;
+function tiltFrame(dt){
+  if(!tilt.on||tilt.b==null)return;
+  const [d0,d1]=SENS[S.sens]||SENS[1];
+  const pourDeg=tilt.b0-tilt.b;                        // top edge tipped away = pouring
+  const target=smoothstep(d0,d1,pourDeg);
+  tilt.flow+=(target-tilt.flow)*Math.min(1,dt*12);
+  const f=tilt.flow;
+  S.flow=Math.max(.05,f);
+  S.h=.97-.55*smoothstep(.28,.62,f);                   // gentle stream dives (high), strong stream floats foam (low)
+  let dg=tilt.g-tilt.g0;dg=Math.max(-18,Math.min(18,dg));
+  const R=Rl(),k=2*R/.98;
+  let u,v;
+  if(tilt.thumb){[u,v]=toUV(tilt.thumb.x,tilt.thumb.y);}else{u=.5;v=.36;}
+  u+=dg*.017;                                          // wrist rock → side-to-side wiggle
+  v+=.20*smoothstep(.15,1,f);                          // more tilt → stream lands farther
+  // pull-through: a quick push of the jug sweeps the stream to the far rim
+  const P=tilt.pt;
+  if(P.cool>0)P.cool-=dt;
+  if(P.on){P.t=Math.min(1,P.t+dt/.38);const e=P.t*P.t*(3-2*P.t);v+=(.92-v)*e;u+=(.5-u)*e*.6;
+    if(f<.06){P.on=false;P.cool=.6;}}
+  const want=f>.06&&!full;
+  if(want&&!ptr.down){ptr.down=true;ptr.fresh=true;}
+  if(!want)ptr.down=false;
+  ptr.x=cx+(u-.5)*k;ptr.y=cy-(v-.5)*k;
+  $('#tgauge i').style.width=(f*100).toFixed(0)+'%';
+  syncSliders();
+}
+
+/* ---------- simulation step ---------- */
+const T={push:.6,se:2,off:.02,qs:1.5,dep:1,drag:1,q:3.2,drad:.04,dk:.35};window.__T=T;
+function smoothstep(a,b,x){x=Math.max(0,Math.min(1,(x-a)/(b-a)));return x*x*(3-2*x);}
+function step(dt){
+  const pouring=ptr.down&&!full;
+  ptr.amt+=((pouring?1:0)-ptr.amt)*Math.min(1,dt*(pouring?14:9));
+  const amt=ptr.amt*S.flow;
+  if(pouring){
+    const [u,v]=toUV(ptr.x,ptr.y);
+    if(ptr.fresh){ptr.pu=u;ptr.pv=v;ptr.u=u;ptr.v=v;ptr.vu=0;ptr.vv=0;ptr.fresh=false;}
+    else{ptr.pu=ptr.u;ptr.pv=ptr.v;ptr.u=u;ptr.v=v;}
+    const k=Math.min(1,dt*25);
+    ptr.vu+=((ptr.u-ptr.pu)/dt-ptr.vu)*k;ptr.vv+=((ptr.v-ptr.pv)/dt-ptr.vv)*k;
+    fill=Math.min(1,fill+dt*S.flow*.085);
+    if(fill>=1&&!full){full=true;ptr.down=false;toast('הכוס מלאה ☕ לחצו ↺ לכוס חדשה');}
+  }
+  const hi=S.h, foamAmt=1-smoothstep(.80,.99,hi);
+  const Q=amt*(.028+.016*(1-hi))*T.q*(0.55+0.45*foamAmt);
+  const eps=.016+.012*S.flow;
+  const dir=tilt.on?[0,1]:[-1,0];
+  const off=S.mode==='N'?[dir[0]*T.off,dir[1]*T.off]:[0,0];
+  let fu=ptr.vu*T.drag,fv=ptr.vv*T.drag;const m=Math.hypot(fu,fv),cap=3;if(m>cap){fu*=cap/m;fv*=cap/m;}
+  if(S.mode==='N'){fu+=dir[0]*T.push;fv+=dir[1]*T.push;}
+  const deps=[];
+  if(amt>.01){const n=Math.max(1,Math.min(6,Math.ceil(Math.hypot(ptr.u-ptr.pu,ptr.v-ptr.pv)/.006)));
+    for(let i=1;i<=n;i++){const t=i/n;deps.push([ptr.pu+(ptr.u-ptr.pu)*t+off[0]*T.dep,ptr.pv+(ptr.v-ptr.pv)*t+off[1]*T.dep]);}}
+  eng.step({dt,amt,su:ptr.u,sv:ptr.v,Q,Qs:S.mode==='N'?Q*T.qs:0,off,eps,eps2:eps*T.se,diss:Math.pow(.18,dt),
+    fu,fv,drad:T.drad,k:Math.min(1,T.dk*amt*dt*60),deps,rad:.010+.010*S.flow,foam:foamAmt*Math.min(1,ptr.amt*1.3),
+    mixA:amt*dt*(.04+1.2*smoothstep(.6,1,hi))/Math.max(1,deps.length)});
+}
+function render(){
+  const R=Rl();
+  eng.render({cx,cy,Ro,Ri,Rl:R,dpr,roast:S.roast,
+    px:cx+(ptr.u-.5)*2*R/.98,py:cy-(ptr.v-.5)*2*R/.98,
+    pouring:S.stream&&ptr.amt*S.flow>0.02?Math.min(1,ptr.amt*1.5):0,
+    streamR:(2.2+3.2*S.flow)*(1.15-.45*S.h)});
+}
+let last=performance.now();
+function frame(now){
+  let dt=Math.min(.033,Math.max(.004,(now-last)/1000));last=now;
+  if(!window.__latte.paused){try{tiltFrame(dt);step(dt);render();}catch(e){console.error(e);}}window.__latte.frames++;requestAnimationFrame(frame);
+}
+window.__latte={__step:step,__render:render,tilt,tiltFrame,onOri,onMot,stats:()=>eng.stats&&eng.stats(),S,ptr,get fill(){return fill},get engine(){return eng.kind},frames:0,paused:false,geo:()=>({cx,cy,Ri,Rl:Rl()}),
+  run(path,dt){this.paused=true;for(const p of path){if(p){ptr.x=p[0];ptr.y=p[1];if(!ptr.down){ptr.down=true;ptr.fresh=true;}}else ptr.down=false;step(dt);}render();}};
+addEventListener('resize',layout);
+layout();resetCup();requestAnimationFrame(frame);
+try{if(!localStorage.getItem('lattelab_seen')){$('#help').classList.add('on');localStorage.setItem('lattelab_seen','1');}}catch(e){$('#help').classList.add('on');}
+})();
+</script>
+</body>
+</html>
