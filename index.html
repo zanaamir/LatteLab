@@ -85,11 +85,24 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-acti
 #gvimg{width:100%;border-radius:50%;display:block;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 #gvlabel{text-align:center;font-weight:800;margin-top:10px}
 a.ok{display:block;text-align:center;text-decoration:none;box-sizing:border-box}
+#recbar{position:absolute;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 66px);display:none;align-items:center;gap:10px;background:#2b2220;color:#fff;border-radius:18px;padding:10px 12px;z-index:7;direction:rtl;font-weight:800;font-size:18px}
+.recording #recbar{display:flex}.recording #brand,.recording #lcard{display:none}
+#recbar .dot{width:14px;height:14px;border-radius:50%;background:#e2483a;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+#recinfo{font-size:13px;opacity:.8;flex:1}
+#recstop{border:none;background:#e2483a;color:#fff;font:inherit;font-weight:900;font-size:17px;border-radius:14px;padding:12px 18px;cursor:pointer}
+#reclist{display:grid;gap:8px;overflow-y:auto;min-height:40px}
+.ri{display:flex;align-items:center;gap:10px;border:2px solid #eef1f4;border-radius:14px;padding:8px}
+.ri img{width:46px;height:46px;border-radius:50%;object-fit:cover;flex:none;background:#eee}
+.ri .rt{flex:1;font-weight:800;font-size:14px;line-height:1.3}.ri .rt small{display:block;color:#8a9bad;font-weight:700;font-size:11.5px}
+.ri button{border:none;background:#eef2f6;color:#33465b;font:inherit;font-weight:800;font-size:13px;border-radius:12px;padding:8px 9px;cursor:pointer}
+.rh{margin:14px 0 6px;font-size:16px}
+.fl{display:block;font-weight:800;font-size:14px;margin-top:10px}.fl textarea,.fl input{display:block;width:100%;margin-top:5px;font:inherit;font-size:16px;border:2px solid #e3e9f0;border-radius:12px;padding:8px}
 #toast{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 120px);transform:translate(-50%,-10px);background:#33465b;color:#fff;padding:10px 18px;border-radius:22px;font-weight:700;font-size:15px;opacity:0;transition:.3s;pointer-events:none;direction:rtl;white-space:nowrap}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 .sheet{position:absolute;inset:0;background:rgba(30,40,55,.35);display:none;align-items:center;justify-content:center;z-index:9;padding:20px}
 .sheet.on{display:flex}
-.card{background:#fff;border-radius:22px;max-width:380px;width:100%;padding:22px 22px 18px;direction:rtl;box-shadow:0 20px 50px rgba(0,0,0,.2);font-size:15px;line-height:1.55;color:#33465b}
+.card{background:#fff;border-radius:22px;max-width:380px;width:100%;max-height:calc(100vh - 40px);overflow-y:auto;padding:22px 22px 18px;direction:rtl;box-shadow:0 20px 50px rgba(0,0,0,.2);font-size:15px;line-height:1.55;color:#33465b}
 .card h2{margin:0 0 10px;font-size:22px;font-weight:800}
 .card ul{margin:0;padding-inline-start:18px}.card li{margin:5px 0}
 .card .ok{margin-top:16px;width:100%;border:none;border-radius:14px;background:#33465b;color:#fff;font:inherit;font-weight:800;font-size:16px;padding:12px;cursor:pointer}
@@ -109,6 +122,7 @@ a.ok{display:block;text-align:center;text-decoration:none;box-sizing:border-box}
 
   <div id="topbtns">
     <button class="cbtn" id="eye" title="הסתר ממשק"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg></button>
+    <button class="cbtn" id="recb" title="הקלטת תנועות"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="#d0483a"/></svg></button>
     <button class="cbtn" id="galb" title="גלריית ביצועים"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg></button>
     <button class="cbtn" id="learnb" title="מצב למידה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/></svg></button>
     <button class="cbtn" id="tiltb" title="מצב כד (הטיית הטלפון)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h10l1.2 2.6L20 6.5"/><path d="M15 7v11a2 2 0 01-2 2H7a2 2 0 01-2-2V7"/><path d="M5 10H3.6A1.6 1.6 0 002 11.6v3.8A1.6 1.6 0 003.6 17H5"/></svg></button>
@@ -131,6 +145,7 @@ a.ok{display:block;text-align:center;text-decoration:none;box-sizing:border-box}
   <div id="lgoal"><img id="lgoalimg" alt=""><span>המטרה</span></div>
   <div id="lbar"><button id="ldemo">▶ הדגמה</button><button id="lgo">✋ תורי</button><button id="lspeed">מהירות 75%</button><button id="lclose">✕</button></div>
   <div id="lcount"></div>
+  <div id="recbar"><span class="dot"></span><span id="rectime">0:00</span><span id="recinfo"></span><button id="recstop">■ עצור</button></div>
   <div id="toast"></div>
   <div id="err">הדפדפן הזה לא תומך ב-WebGL. נסו לפתוח ב-Chrome או Safari עדכני.</div>
 
@@ -145,6 +160,7 @@ a.ok{display:block;text-align:center;text-decoration:none;box-sizing:border-box}
       <li><b>מצב כד (🫗 למעלה):</b> הטלפון הוא הכד. מחזיקים בנוחות, לוחצים "כיול", ומטים את הקצה העליון קדימה כדי למזוג. הטיה קלה נותנת זרם דק שצולל, והטיה חזקה מעלה קצף. מזיזים את הטלפון ימינה ושמאלה (הזזה, לא סיבוב) כדי לנענע, כמו עם כד אמיתי. לסיום דוחפים את הטלפון קדימה בתנועה קצרה וחדה, והזרם נמשך לשפה הנגדית (אפשר גם להחליק באגודל על הכוס). רגישות ההטיה נקבעת בהגדרות.</li>
       <li><b>🎓 למידה:</b> בוחרים צורה, צופים בהדגמה ואז מנסים לבד. הנקודה מראה איפה הזרם צריך לנחות, וגודלה מראה כמה חזק למזוג. בסוף מקבלים ציון וטיפים.</li>
       <li><b>▦ גלריה:</b> כל כוס נשמרת אוטומטית בסוף המזיגה ובאיפוס.</li>
+      <li><b>● הקלטה:</b> בריסטה מנוסה מקליט את התנועות האמיתיות שלו (מומלץ עם הטלפון מוצמד לכד אמיתי), שומר, ושולח את הקובץ ל-Claude לכיול. ▶ משמיע הקלטה בסימולטור.</li>
       <li>↺ מתחילים כוס חדשה. 👁 מסתיר את הממשק בשביל צילום.</li>
     </ul>
     <button class="ok" data-close>יאללה למזוג</button>
@@ -180,6 +196,25 @@ a.ok{display:block;text-align:center;text-decoration:none;box-sizing:border-box}
   <div class="sheet" id="gview"><div class="card">
     <img id="gvimg" alt=""><div id="gvlabel"></div>
     <div class="rbtns"><a class="ok" id="gvdl" download="latte.jpg">הורד תמונה</a><button class="ok alt" id="gvdel">מחק</button><button class="ok alt" data-close>סגור</button></div>
+  </div></div>
+  <div class="sheet" id="recs"><div class="card gcard">
+    <h2>🎙 הקלטת תנועות בריסטה</h2>
+    <p class="small">מזגו צורה כמו שאתם מוזגים באמת, והחיישנים יקליטו כל הטיה ותזוזה. שלחו את הקובץ ל-Claude, והוא יכייל לפיו את הסימולטור. <b>הכי מדויק:</b> להצמיד את הטלפון לכד אמיתי (גומייה או סרט דביק), מסך כלפי מעלה וחלקו העליון לכיוון הפיה, ולמזוג באמת.</p>
+    <div class="row">צורה<div class="seg" data-r="shape"><button data-v="heart">לב</button><button data-v="tulip">טוליפ</button><button data-v="rosetta">רוזטה</button><button data-v="other">אחר</button></div></div>
+    <div class="row">איך מחזיקים<div class="seg" data-r="hold"><button data-v="jug">מוצמד לכד</button><button data-v="hand">ביד כמו כד</button></div></div>
+    <div class="row">עצירה אוטומטית<div class="seg" data-r="auto"><button data-v="1">כן</button><button data-v="0">לא</button></div></div>
+    <button class="ok" id="recgo">● התחל הקלטה</button>
+    <h3 class="rh">ההקלטות שלי</h3>
+    <div id="reclist"></div>
+    <div class="rbtns"><button class="ok alt" id="recall">שלח את כולן</button><button class="ok alt" data-close>סגור</button></div>
+  </div></div>
+  <div class="sheet" id="recsave"><div class="card">
+    <h2>שמירת הקלטה</h2>
+    <div id="rsum" class="small"></div>
+    <div class="row">איך יצאה הכוס האמיתית?<div class="seg" data-r="rating"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button></div></div>
+    <label class="fl">הערות (מה עשיתם, מה חשוב לשים לב)<textarea id="rnotes" rows="3" placeholder="לדוגמה: התחלתי גבוה 5 ס״מ, הנמכתי כשהכוס חצי מלאה, משיכה מהירה בסוף"></textarea></label>
+    <label class="fl">תמונה של הכוס האמיתית (לא חובה)<input type="file" id="rphoto" accept="image/*"></label>
+    <div class="rbtns"><button class="ok" id="rsave">שמור</button><button class="ok alt" id="rdiscard">מחק</button></div>
   </div></div>
   <div class="sheet" id="settings"><div class="card">
     <h2>הגדרות</h2>
@@ -703,11 +738,12 @@ const tilt={on:false,thumb:null,b:null,g:null,b0:null,g0:null,last:0,flow:0,
 // A real jug: when it is full the milk reaches the spout after a small tip; as it empties you must tip further.
 // [tip where milk starts, extra tip to full flow] for a full jug; +34° more by the time the cup is full.
 const SENS={0:[30,32],1:[24,30],2:[16,28]};             // low / normal / high sensitivity
-function onOri(e){if(e.beta==null)return;tilt.last=performance.now();
+function onOri(e){if(e.beta==null)return;if(rep.on&&!e.__rep)return;if(rec.on&&!e.__rep)rec.o.push([recT(),r2(e.beta),r2(e.gamma),r2(e.alpha)]);tilt.last=performance.now();
   if(tilt.b==null){tilt.b=e.beta;tilt.g=e.gamma;}
   tilt.b+=(e.beta-tilt.b)*.5;tilt.g+=(e.gamma-tilt.g)*.6;
   if(tilt.b0==null){tilt.b0=tilt.b;tilt.g0=tilt.g;}}
-function onMot(e){const A=e.acceleration;if(!A||A.x==null||tilt.b==null)return;
+function onMot(e){if(rep.on&&!e.__rep)return;if(rec.on&&!e.__rep&&e.acceleration){const A=e.acceleration,G=e.accelerationIncludingGravity||{},R=e.rotationRate||{};rec.m.push([recT(),r2(A.x),r2(A.y),r2(A.z),r2(G.x),r2(G.y),r2(G.z),r2(R.alpha),r2(R.beta),r2(R.gamma)]);}
+  const A=e.acceleration;if(!A||A.x==null||tilt.b==null)return;
   // sideways movement of the jug: double integration with leaks (≈0.3 Hz high-pass) → follows a 2–5 Hz wiggle, returns to centre when you stop
   const now=performance.now(),dt=Math.min(.05,Math.max(.005,(now-(tilt.mt||now))/1000||.016));tilt.mt=now;
   let ax=A.x;ax=Math.abs(ax)<.04?0:ax;
@@ -971,6 +1007,83 @@ $('#glist').addEventListener('click',e=>{const b=e.target.closest('.gi');if(!b)r
 $('#gvdel').onclick=()=>{if(gvIdx>=0){gallery.splice(gvIdx,1);saveGallery();}$('#gview').classList.remove('on');openGallery();};
 $('#gclear').onclick=()=>{gallery=[];saveGallery();openGallery();};
 
+
+/* =================== RECORDING: a barista teaches the simulator =================== */
+const r2=x=>x==null?null:Math.round(x*100)/100;
+const rec={on:false,o:[],m:[],s:[],t0:0,poured:false,quiet:0,opt:{shape:'heart',hold:'jug',auto:'1',rating:'4'},cur:null};
+const rep={on:false,data:null,t:0,io:0,im:0,wasTilt:false};
+const recT=()=>Math.round(performance.now()-rec.t0);
+let recs=[];try{recs=JSON.parse(localStorage.getItem('lattelab_recs')||'[]');}catch(e){}
+function saveRecs(){for(;;){try{localStorage.setItem('lattelab_recs',JSON.stringify(recs));return true;}catch(e){if(recs.length<=1){toast('אין מקום בזיכרון. שלחו ומחקו הקלטות ישנות');return false;}recs.pop();}}}
+const SHAPES={heart:'לב',tulip:'טוליפ',rosetta:'רוזטה',other:'אחר'};
+function syncRecSeg(){document.querySelectorAll('[data-r]').forEach(g=>g.querySelectorAll('button').forEach(b=>b.classList.toggle('on',rec.opt[g.dataset.r]===b.dataset.v)));}
+document.querySelectorAll('[data-r]').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;rec.opt[g.dataset.r]=b.dataset.v;syncRecSeg();}));
+function fmtDur(ms){const s=Math.round(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function openRecs(){syncRecSeg();
+  $('#reclist').innerHTML=recs.length?recs.map((r,i)=>`<div class="ri"><img src="${r.photo||r.simImg||''}" alt=""><div class="rt">${SHAPES[r.shape]||r.shape} · ${'★'.repeat(+r.rating||0)}<small>${fmtDate(r.created)} · ${fmtDur(r.dur)} · ${r.hold==='jug'?'מוצמד לכד':'ביד'}</small></div><button data-a="play" data-i="${i}">▶</button><button data-a="send" data-i="${i}">שלח</button><button data-a="del" data-i="${i}">✕</button></div>`).join(''):'<div class="small" style="color:#8a9bad;font-weight:700">עוד אין הקלטות.</div>';
+  $('#recs').classList.add('on');}
+$('#recb').onclick=()=>{if(rec.on)return;openRecs();};
+$('#reclist').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const i=+b.dataset.i,r=recs[i];
+  if(b.dataset.a==='play'){$('#recs').classList.remove('on');startReplay(r);}
+  if(b.dataset.a==='send')shareRecs([r],'lattelab-'+r.shape+'-'+new Date(r.created).toISOString().slice(0,16).replace(/[:T]/g,'-'));
+  if(b.dataset.a==='del'){recs.splice(i,1);saveRecs();openRecs();}});
+$('#recall').onclick=()=>{if(!recs.length){toast('אין הקלטות');return;}shareRecs(recs,'lattelab-recordings-'+new Date().toISOString().slice(0,10));};
+async function shareRecs(list,name){
+  const json=JSON.stringify({app:'LatteLab',format:1,exported:new Date().toISOString(),recordings:list});
+  const file=new File([json],name+'.json',{type:'application/json'});
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'LatteLab'});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();a.remove();toast('הקובץ ירד ✓');return;}catch(e){}
+  try{await navigator.clipboard.writeText(json);toast('הועתק ללוח. הדביקו ל-Claude');}catch(e){toast('לא הצלחתי לייצא');}
+}
+$('#recgo').onclick=async()=>{
+  $('#recs').classList.remove('on');
+  if(learn.on)exitLearn();
+  if(!tilt.on){await startTilt();if(!tilt.on)return;}
+  for(let n=3;n>0;n--){showCount(n);await new Promise(r=>setTimeout(r,1000));}
+  showCount(0);
+  newCup('הקלטה');resetCup();calibrate();
+  rec.o=[];rec.m=[];rec.s=[];rec.poured=false;rec.quiet=0;rec.t0=performance.now();rec.on=true;
+  rec.cal={b0:r2(tilt.b0),g0:r2(tilt.g0)};
+  app.classList.add('recording');$('#recinfo').textContent=SHAPES[rec.opt.shape]+' · מזגו כרגיל';
+};
+$('#recstop').onclick=()=>stopRec();
+function recFrame(dt){
+  if(!rec.on)return;
+  const t=recT();$('#rectime').textContent=fmtDur(t);
+  rec.s.push([t,r2(ptr.u),r2(ptr.v),r2(tilt.flow),ptr.down?1:0,r2(fill)]);
+  if(tilt.flow>.25)rec.poured=true;
+  if(rec.opt.auto==='1'&&rec.poured){rec.quiet=tilt.flow<.04?rec.quiet+dt:0;if(rec.quiet>2.2)stopRec();}
+  if(t>90000)stopRec();
+}
+function stopRec(){if(!rec.on)return;rec.on=false;app.classList.remove('recording');
+  const dur=recT();
+  rec.cur={app:'LatteLab',format:1,shape:rec.opt.shape,hold:rec.opt.hold,created:Date.now(),dur,
+    sens:S.sens,wigMode:S.wig?'move':'rotate',cal:rec.cal,screen:[screen.width,screen.height],ua:navigator.userAgent,
+    o:rec.o,m:rec.m,s:rec.s,simImg:snapshotSmall()};
+  $('#rsum').textContent=`${SHAPES[rec.opt.shape]} · ${fmtDur(dur)} · ${rec.o.length} מדידות הטיה, ${rec.m.length} מדידות תנועה`;
+  rec.opt.rating=rec.opt.rating||'4';syncRecSeg();$('#rnotes').value='';$('#rphoto').value='';
+  $('#recsave').classList.add('on');}
+function snapshotSmall(){try{const R=Rl(),c=document.createElement('canvas'),n=200;c.width=c.height=n;const x=c.getContext('2d');render();
+  x.drawImage(canvas,(cx-R)*dpr,(cy-R)*dpr,2*R*dpr,2*R*dpr,0,0,n,n);return c.toDataURL('image/jpeg',.75);}catch(e){return null;}}
+function readPhoto(f){return new Promise(res=>{if(!f){res(null);return;}const im=new Image();im.onload=()=>{const k=Math.min(1,640/Math.max(im.width,im.height)),c=document.createElement('canvas');
+  c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.8));URL.revokeObjectURL(im.src);};im.onerror=()=>res(null);im.src=URL.createObjectURL(f);});}
+$('#rsave').onclick=async()=>{const r=rec.cur;if(!r)return;r.rating=rec.opt.rating;r.notes=$('#rnotes').value.trim();r.photo=await readPhoto($('#rphoto').files[0]);
+  recs.unshift(r);saveRecs();rec.cur=null;$('#recsave').classList.remove('on');toast('נשמר ✓ אפשר לשלוח מתפריט ההקלטות');openRecs();};
+$('#rdiscard').onclick=()=>{rec.cur=null;$('#recsave').classList.remove('on');};
+/* replay a recording through the simulator, exactly as the sensors reported it */
+function startReplay(r){if(!r||!r.o||!r.o.length){toast('ההקלטה ריקה');return;}
+  if(learn.on)exitLearn();
+  rep.wasTilt=tilt.on;rep.on=true;rep.data=r;rep.t=0;rep.io=0;rep.im=0;
+  tilt.b=tilt.g=null;tilt.b0=tilt.g0=null;tilt.flow=0;tilt.lx=tilt.lv=0;tilt.pt.on=false;
+  if(r.sens!=null)S.sens=r.sens;
+  newCup('השמעה');resetCup();tilt.on=true;app.classList.add('tilting');
+  const o=r.o[0];onOri({beta:o[1],gamma:o[2],alpha:o[3],__rep:1});if(r.cal){tilt.b0=r.cal.b0;tilt.g0=r.cal.g0;}
+  toast('▶ משמיע: '+(SHAPES[r.shape]||''));}
+function repFrame(dt){if(!rep.on)return;const r=rep.data;rep.t+=dt*1000;
+  while(rep.io<r.o.length&&r.o[rep.io][0]<=rep.t){const o=r.o[rep.io++];onOri({beta:o[1],gamma:o[2],alpha:o[3],__rep:1});}
+  while(rep.im<r.m.length&&r.m[rep.im][0]<=rep.t){const m=r.m[rep.im++];onMot({acceleration:{x:m[1],y:m[2],z:m[3]},__rep:1});}
+  if(rep.io>=r.o.length&&rep.im>=r.m.length){rep.on=false;ptr.down=false;tilt.flow=0;if(!rep.wasTilt){tilt.on=false;app.classList.remove('tilting');}toast('סוף ההשמעה');}}
+
 /* ---------- simulation step ---------- */
 const T={s0:.25,s1:.7,gate:1,ga:1.5,thin:.45,tl:0,ts:.02,pw:1,pf:1,rel:40,diss:.005,pq:1,ps:1,pr:-.6,pk:5,pa:1,pd:1.5,push:.6,se:2,off:.02,qs:1.5,dep:1,drag:1,q:3.2,drad:.04,dk:.35};window.__T=T;
 function smoothstep(a,b,x){x=Math.max(0,Math.min(1,(x-a)/(b-a)));return x*x*(3-2*x);}
@@ -1023,9 +1136,9 @@ function tick(dt){const ts=learnFrame(dt);tiltFrame(dt*ts);simAcc+=dt*ts;let n=0
 let last=performance.now();
 function frame(now){
   let dt=Math.min(.033,Math.max(.004,(now-last)/1000));last=now;
-  if(!window.__latte.paused){try{tick(dt);render();drawGuide();galleryFrame(dt);}catch(e){console.error(e);}}window.__latte.frames++;requestAnimationFrame(frame);
+  if(!window.__latte.paused){try{repFrame(dt);tick(dt);recFrame(dt);render();drawGuide();galleryFrame(dt);}catch(e){console.error(e);}}window.__latte.frames++;requestAnimationFrame(frame);
 }
-window.__latte={tick,cup,get gallery(){return gallery},galleryFrame,openGallery,learn,learnFrame,drawGuide,LESSONS,startLesson,runLesson,__step:step,__render:render,tilt,tiltFrame,onOri,onMot,stats:()=>eng.stats&&eng.stats(),S,ptr,get fill(){return fill},get engine(){return eng.kind},frames:0,paused:false,geo:()=>({cx,cy,Ri,Rl:Rl()}),
+window.__latte={rec,rep,startReplay,stopRec,recFrame,repFrame,get recs(){return recs},tick,cup,get gallery(){return gallery},galleryFrame,openGallery,learn,learnFrame,drawGuide,LESSONS,startLesson,runLesson,__step:step,__render:render,tilt,tiltFrame,onOri,onMot,stats:()=>eng.stats&&eng.stats(),S,ptr,get fill(){return fill},get engine(){return eng.kind},frames:0,paused:false,geo:()=>({cx,cy,Ri,Rl:Rl()}),
   run(path,dt){this.paused=true;for(const p of path){if(p){ptr.x=p[0];ptr.y=p[1];if(!ptr.down){ptr.down=true;ptr.fresh=true;}}else ptr.down=false;step(dt);}render();}};
 addEventListener('resize',layout);
 layout();resetCup();requestAnimationFrame(frame);
