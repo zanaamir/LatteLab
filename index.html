@@ -270,13 +270,15 @@ const P={
     vec4 r=texture2D(uX,c);
     gl_FragColor=isVel>.5?vec4(r.xy*diss,0.,1.):r;
   }`),
- splatV:prog(`uniform sampler2D uX;uniform vec2 pt,force;uniform float rad,k;
-  void main(){vec2 d=vUv-pt;float g=exp(-dot(d,d)/(rad*rad));vec2 v=texture2D(uX,vUv).xy;v+=(force-v)*g*k;
+ splatV:prog(`uniform sampler2D uX,uDye;uniform vec2 pt,force,ahead;uniform float rad,k,gate;
+  void main(){vec2 d=vUv-pt;float g=exp(-dot(d,d)/(rad*rad));vec2 v=texture2D(uX,vUv).xy;
+   float inFoam=smoothstep(.2,.5,texture2D(uDye,pt+ahead).r);
+   v+=(force-v)*g*k*mix(1.,inFoam,gate);
    if(length(vUv-.5)>.49)v=vec2(0.);gl_FragColor=vec4(v,0.,1.);}`),
- splatD:prog(`uniform sampler2D uX;uniform vec2 pt,ahead;uniform float rad,foam,mixA,cut,pull;
+ splatD:prog(`uniform sampler2D uX;uniform vec2 pt,ahead;uniform float rad,foam,mixA,cut,pull,thin,pullF;
   void main(){vec4 c=texture2D(uX,vUv);vec2 d=vUv-pt;float g=exp(-dot(d,d)/(rad*rad));
    float hd=smoothstep(rad,rad*.55,length(d));
-   if(pull>0.){float a=texture2D(uX,ahead).r;hd*=mix(1.,smoothstep(.3,.55,a),pull);}
+   if(pull>0.){float a=texture2D(uX,ahead).r;float thinL=smoothstep(rad*thin,rad*thin*.5,length(d))*.9*pullF;hd=mix(hd,max(hd*smoothstep(.3,.55,a),thinL),pull);}
    c.r=max(c.r,foam*hd);
    c.g=min(1.,c.g+mixA*exp(-dot(d,d)/(rad*rad*9.)));
    gl_FragColor=c;}`),
@@ -406,8 +408,9 @@ return {
   resize(){},
   step(p){
     if(p.amt>.01){
-      use(P.splatV,vel.w,N,N);bindT(P.splatV,'uX',vel.r,0);
-      gl.uniform2f(P.splatV.u.pt,p.su,p.sv);gl.uniform2f(P.splatV.u.force,p.fu,p.fv);gl.uniform1f(P.splatV.u.rad,p.drad);gl.uniform1f(P.splatV.u.k,p.k);draw();vel.swap();
+      use(P.splatV,null,N,N);
+      for(const [x,y,kk] of p.drags){gl.bindFramebuffer(gl.FRAMEBUFFER,vel.w.f);gl.viewport(0,0,N,N);bindT(P.splatV,'uX',vel.r,0);
+      bindT(P.splatV,'uDye',dye.r,1);gl.uniform2f(P.splatV.u.ahead,p.ahead[0]*T.ga,p.ahead[1]*T.ga);gl.uniform1f(P.splatV.u.gate,p.pullF*T.gate);gl.uniform2f(P.splatV.u.pt,x,y);gl.uniform2f(P.splatV.u.force,p.fu,p.fv);gl.uniform1f(P.splatV.u.rad,p.drad);gl.uniform1f(P.splatV.u.k,p.k*kk);draw();vel.swap();}
     }
     const setSrc=pr=>{gl.uniform2f(pr.u.uSrc,p.su+p.off[0],p.sv+p.off[1]);gl.uniform2f(pr.u.uSnk,p.su,p.sv);gl.uniform1f(pr.u.uQ,p.Q);gl.uniform1f(pr.u.uQs,p.Qs);gl.uniform1f(pr.u.uEps,p.eps);gl.uniform1f(pr.u.uEps2,p.eps2);};
     use(P.advect,vel.w,N,N);bindT(P.advect,'uVel',vel.r,0);bindT(P.advect,'uX',vel.r,1);setSrc(P.advect);
@@ -423,7 +426,7 @@ return {
       use(P.splatD,null,DN,DN);
       for(const [x,y] of p.deps){
         gl.bindFramebuffer(gl.FRAMEBUFFER,dye.w.f);gl.viewport(0,0,DN,DN);bindT(P.splatD,'uX',dye.r,0);
-        gl.uniform2f(P.splatD.u.pt,x,y);gl.uniform2f(P.splatD.u.ahead,x+p.ahead[0],y+p.ahead[1]);gl.uniform1f(P.splatD.u.pull,p.pull);gl.uniform1f(P.splatD.u.rad,p.rad);gl.uniform1f(P.splatD.u.foam,p.foam);
+        gl.uniform2f(P.splatD.u.pt,x,y);gl.uniform2f(P.splatD.u.ahead,x+p.ahead[0],y+p.ahead[1]);gl.uniform1f(P.splatD.u.pull,p.pull);gl.uniform1f(P.splatD.u.thin,p.thin);gl.uniform1f(P.splatD.u.pullF,p.pullF);gl.uniform1f(P.splatD.u.rad,p.rad);gl.uniform1f(P.splatD.u.foam,p.foam);
         gl.uniform1f(P.splatD.u.mixA,p.mixA);draw();dye.swap();}
     }
   },
@@ -559,8 +562,9 @@ function makeCPU(canvas){
       F.Q=p.Q;F.Qs=p.Qs;F.sx=p.su+p.off[0];F.sy=p.sv+p.off[1];F.kx=p.su;F.ky=p.sv;F.e1=p.eps;F.e2=p.eps2;
       // stream drag + pitcher push on a coarse velocity grid (same scheme as the GPU engine)
       const n=N;
-      if(p.amt>.01){const r=p.drad,r2=r*r,i0=Math.max(0,((p.su-3*r)*n)|0),i1=Math.min(n-1,((p.su+3*r)*n)|0),j0=Math.max(0,((p.sv-3*r)*n)|0),j1=Math.min(n-1,((p.sv+3*r)*n)|0);
-        for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const k=j*n+i;if(!mask[k])continue;const dx=(i+.5)/n-p.su,dy=(j+.5)/n-p.sv,g=Math.exp(-(dx*dx+dy*dy)/r2)*p.k;
+      const gateV=(p.pullF*T.gate>.3&&!covered(foam,p.su+p.ahead[0]*T.ga,p.sv+p.ahead[1]*T.ga))?1-p.pullF*T.gate:1;
+      if(p.amt>.01)for(const [sx,sy,kk0] of p.drags){const kk=kk0*gateV,r=p.drad,r2=r*r,i0=Math.max(0,((sx-3*r)*n)|0),i1=Math.min(n-1,((sx+3*r)*n)|0),j0=Math.max(0,((sy-3*r)*n)|0),j1=Math.min(n-1,((sy+3*r)*n)|0);
+        for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const k=j*n+i;if(!mask[k])continue;const dx=(i+.5)/n-sx,dy=(j+.5)/n-sy,g=Math.exp(-(dx*dx+dy*dy)/r2)*p.k*kk;
           gu[k]+=(p.fu-gu[k])*g;gv[k]+=(p.fv-gv[k])*g;}}
       for(let j=0;j<n;j++)for(let i=0;i<n;i++){const k=j*n+i;if(!mask[k]){gu2[k]=0;gv2[k]=0;continue;}
         const x=(i+.5)/n,y=(j+.5)/n;vel(x,y);
@@ -583,7 +587,7 @@ function makeCPU(canvas){
       if(p.amt>.01){
         if(p.foam>.5||p.pull>.5){const r=p.rad*1.05;
           for(const [x,y] of p.deps){
-            if(p.pull>.5){if(covered(foam,x+p.ahead[0],y+p.ahead[1]))foam.push(circle(x,y,r,12));continue;}
+            if(p.pull>.5){if(covered(foam,x+p.ahead[0],y+p.ahead[1]))foam.push(circle(x,y,r,12));else if(p.thin>0&&p.pullF>.5)foam.push(circle(x,y,r*p.thin*.75,8));continue;}
             let need=!covered(foam,x,y);
             if(!need)for(let k=0;k<4&&!need;k++){const t=k*1.5708+frameN;need=!covered(foam,x+Math.cos(t)*r*.75,y+Math.sin(t)*r*.75);}
             if(need)foam.push(circle(x,y,r,14));}
@@ -696,7 +700,9 @@ canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',
 // The accelerometer is used only to recognise one gesture: a quick push forward = pull-through to the far rim.
 const tilt={on:false,thumb:null,b:null,g:null,b0:null,g0:null,last:0,flow:0,
   pt:{on:false,t:0,cool:0,hits:0},lt:0};
-const SENS={0:[12,62],1:[9,50],2:[7,42]};                // low / normal / high (high = first version)
+// A real jug: when it is full the milk reaches the spout after a small tip; as it empties you must tip further.
+// [tip where milk starts, extra tip to full flow] for a full jug; +34° more by the time the cup is full.
+const SENS={0:[30,32],1:[24,30],2:[16,28]};             // low / normal / high sensitivity
 function onOri(e){if(e.beta==null)return;tilt.last=performance.now();
   if(tilt.b==null){tilt.b=e.beta;tilt.g=e.gamma;}
   tilt.b+=(e.beta-tilt.b)*.5;tilt.g+=(e.gamma-tilt.g)*.6;
@@ -735,7 +741,8 @@ $('#tcal').onclick=calibrate;$('#toff').onclick=stopTilt;
 function tiltFrame(dt){
   if(!tilt.on||tilt.b==null)return;
   if(learn.on&&(learn.mode==='demo'||learn.count>0)){if(learn.count>0)ptr.down=false;return;}
-  const [d0,d1]=SENS[S.sens]||SENS[1];
+  const [a0,span]=SENS[S.sens]||SENS[1];
+  const d0=a0+34*Math.min(1,fill),d1=d0+span;
   const pourDeg=tilt.b0-tilt.b;                        // top edge tipped away = pouring
   const target=smoothstep(d0,d1,pourDeg);
   tilt.flow+=(target-tilt.flow)*Math.min(1,dt*12);
@@ -753,7 +760,9 @@ function tiltFrame(dt){
   // pull-through: a quick push of the jug sweeps the stream to the far rim
   const P=tilt.pt;
   if(P.cool>0)P.cool-=dt;
-  if(P.on){P.t=Math.min(1,P.t+dt/.38);const e=P.t*P.t*(3-2*P.t);v+=(.92-v)*e;u+=(.5-u)*e*.6;
+  if(P.on){if(P.t===0)P.v0=v;P.t=Math.min(1,P.t+dt/.4);const e=P.t*(.6+.4*P.t);
+    let endV=Math.min(.92,P.v0+.36);if(learn.on&&learn.L){const ps=learn.L.steps.find(q=>q.pull);if(ps)endV=toUVjug(ps.f[1],0)[1];}
+    v=P.v0+(endV-P.v0)*e;u+=(.5-u)*e*.6;
     if(f<.06){P.on=false;P.cool=.6;}}
   const want=f>.06&&!full;
   if(want&&!ptr.down){ptr.down=true;ptr.fresh=true;}
@@ -770,10 +779,10 @@ function tiltFrame(dt){
 const LESSONS=[
  {id:'heart',name:'לב',level:'מתחילים',desc:'עיגול אחד ומשיכה דרכו',icon:'M22 38C10 30 6 24 6 17a8 8 0 0116-3 8 8 0 0116 3c0 7-4 13-16 21z',
   steps:[
-   {dur:2.6,f:[0,0],flow:.45,h:.95,text:'מזיגה גבוהה ודקה למרכז הכוס. החלב צולל מתחת לקרמה ובונה בסיס.'},
-   {dur:2.4,f:[-.1,-.1],flow:.9,h:.45,text:'הנמך את הכד עד שהפיה כמעט נוגעת בקפה, והגבר זרימה. עיגול לבן גדל.'},
-   {dur:.6,f:[-.2,-.2],flow:.9,h:.45,text:'זוז מעט אחורה אליך, בלי לעצור. העיגול מתמלא.'},
-   {dur:.5,f:[-.22,.44],flow:.45,h:.75,pull:1,text:'הרם מעט, הקטן זרימה, ומשוך קו ישר ומהיר דרך העיגול עד השפה הנגדית.'}]},
+   {dur:2.0,f:[0,0],flow:.45,h:.95,text:'מזיגה גבוהה ודקה למרכז הכוס. החלב צולל מתחת לקרמה ובונה בסיס.'},
+   {dur:1.45,f:[-.15,-.15],flow:.9,h:.45,text:'הנמך את הכד עד שהפיה כמעט נוגעת בקפה, קצת קרוב אליך, והגבר זרימה. עיגול לבן גדל.'},
+   {dur:.5,f:[-.22,-.22],flow:.9,h:.45,text:'זוז מעט אחורה אליך, בלי לעצור. העיגול מתמלא.'},
+   {dur:.45,f:[-.28,.44],flow:.45,h:.75,pull:1,text:'הרם מעט, הקטן זרימה, ומשוך קו ישר ומהיר דרך העיגול עד השפה הנגדית. נוצר חוד וקו דק.'}]},
  {id:'tulip',name:'טוליפ',level:'בינוני',desc:'שלוש דחיפות ערומות',icon:'M22 40V22M12 28c0-8 4-12 10-12s10 4 10 12M14 19c0-6 3-10 8-10s8 4 8 10M17 11c0-3 2-6 5-6s5 3 5 6',
   steps:[
    {dur:2.4,f:[0,0],flow:.45,h:.95,text:'מזיגה גבוהה ודקה למרכז. בונים בסיס.'},
@@ -782,14 +791,14 @@ const LESSONS=[
    {dur:1.0,f:[-.17,-.17],flow:.9,h:.45,text:'עיגול שני, קצת יותר קרוב אליך. הוא דוחף את הראשון קדימה.'},
    {dur:.25,f:[-.17,-.17],flow:0,h:.6,text:'עצור לרגע.'},
    {dur:.75,f:[-.245,-.245],flow:.9,h:.45,text:'עיגול שלישי, קטן.'},
-   {dur:.6,f:[-.27,.44],flow:.45,h:.75,pull:1,text:'משוך קו דרך שלושתם עד השפה הנגדית.'}]},
+   {dur:.5,f:[-.27,.44],flow:.45,h:.75,pull:1,text:'משוך קו ישר ומהיר דרך שלושתם עד השפה הנגדית. נשאר קו דק.'}]},
  {id:'rosetta',name:'רוזטה',level:'מתקדמים',desc:'נענוע תוך כדי נסיגה',icon:'M22 41V8M22 14l-7-4M22 14l7-4M22 21l-10-5M22 21l10-5M22 28l-12-5M22 28l12-5M22 35l-11-4M22 35l11-4',
   steps:[
    {dur:2.4,f:[.02,.02],flow:.45,h:.95,text:'מזיגה גבוהה ודקה למרכז. בונים בסיס.'},
    {dur:1.2,f:[.025,.025],flow:.9,h:.45,text:'הנמך והגבר עד שמופיע לבן.'},
    {dur:3.2,f:[.025,-.22],flow:.9,h:.45,wig:[.108,.045,3.5],text:'נענע את הכד מצד לצד, מהר וקצר, ותוך כדי זוז לאט אחורה אליך.'},
    {dur:.3,f:[-.23,-.23],flow:.85,h:.5,text:'עצור את הנענוע: ראש קטן.'},
-   {dur:.45,f:[-.24,.44],flow:.45,h:.75,pull:1,text:'הרם מעט ומשוך קו ישר דרך כל העלים.'}]}
+   {dur:.45,f:[-.24,.44],flow:.45,h:.75,pull:1,text:'הרם מעט ומשוך קו ישר ומהיר דרך כל העלים עד השפה הנגדית.'}]}
 ];
 LESSONS.forEach(L=>{let t=0;L.steps.forEach(st=>{st.t0=t;t+=st.dur;});L.total=t;});
 const learn={on:false,L:null,mode:null,t:0,speed:.75,count:0,goal:{},stats:[],ended:false,pullDone:false};
@@ -802,7 +811,8 @@ function lessonAt(L,t){
   const p=(t-st.t0)/st.dur,e=st.pull?p*(.6+.4*p):p;
   const f=st.f[0]+(st.f[1]-st.f[0])*e;let sd=0;
   if(st.wig){const a=st.wig[0]+(st.wig[1]-st.wig[0])*p;sd=a*Math.sin((t-st.t0)*2*Math.PI*st.wig[2]);}
-  return {i,st,p,f,sd,flow:st.flow,h:st.h};
+  const fl=st.pull&&st.fade?st.flow*(1-Math.min(1,Math.max(0,(p-st.fade)/(1-st.fade)))):st.flow;   // lift the jug at the end of the pull
+  return {i,st,p,f,sd,flow:fl,h:st.h};
 }
 function toUVjug(f,sd){const A=jugAxes();return [.5+A.F[0]*f+A.Sd[0]*sd,.5+A.F[1]*f+A.Sd[1]*sd];}
 function uvToScreen(u,v){const R=Rl(),k=2*R/.98;return [cx+(u-.5)*k,cy-(v-.5)*k];}
@@ -962,7 +972,7 @@ $('#gvdel').onclick=()=>{if(gvIdx>=0){gallery.splice(gvIdx,1);saveGallery();}$('
 $('#gclear').onclick=()=>{gallery=[];saveGallery();openGallery();};
 
 /* ---------- simulation step ---------- */
-const T={pw:1,pf:1,rel:40,diss:.005,pq:1,ps:1,pr:-.3,pk:3,pa:1,pd:1,push:.6,se:2,off:.02,qs:1.5,dep:1,drag:1,q:3.2,drad:.04,dk:.35};window.__T=T;
+const T={s0:.25,s1:.7,gate:1,ga:1.5,thin:.45,tl:0,ts:.02,pw:1,pf:1,rel:40,diss:.005,pq:1,ps:1,pr:-.6,pk:5,pa:1,pd:1.5,push:.6,se:2,off:.02,qs:1.5,dep:1,drag:1,q:3.2,drad:.04,dk:.35};window.__T=T;
 function smoothstep(a,b,x){x=Math.max(0,Math.min(1,(x-a)/(b-a)));return x*x*(3-2*x);}
 function step(dt){
   const pouring=ptr.down&&!full;
@@ -983,14 +993,21 @@ function step(dt){
   const jm=(typeof learn!=='undefined'&&learn.on&&learn.mode&&learn.count===0&&learn.L)?(lessonAt(learn.L,learn.t).st.jet||S.mode):S.mode;
   const dir=tilt.on?[0,1]:[-1,0];
   const off=jm==='N'?[dir[0]*T.off,dir[1]*T.off]:[0,0];
-  const sp=smoothstep(.35,1.2,Math.hypot(ptr.vu,ptr.vv));
+  const sp=smoothstep(T.s0,T.s1,Math.hypot(ptr.vu,ptr.vv));
   let fu=ptr.vu*T.drag*(1+T.pd*sp),fv=ptr.vv*T.drag*(1+T.pd*sp);const m=Math.hypot(fu,fv),cap=3;if(m>cap){fu*=cap/m;fv*=cap/m;}
   if(jm==='N'){fu+=dir[0]*T.push;fv+=dir[1]*T.push;}
+  const spF=smoothstep(T.s0,T.s1,ptr.vu*dir[0]+ptr.vv*dir[1]);   // forward motion only = pull-through
+  // the whole stream line drags the foam during a fast pull, not just its tip
+  if(pouring){ptr.trail=ptr.trail||[];ptr.trail.push([ptr.u,ptr.v]);if(ptr.trail.length>40)ptr.trail.shift();}else ptr.trail=[];
+  const drags=[[ptr.u,ptr.v,1]];
+  if(sp>.3&&ptr.trail&&ptr.trail.length>2&&T.tl>0){let acc=0,next=T.ts;const tr=ptr.trail;
+    for(let i=tr.length-1;i>0&&acc<T.tl;i--){const d=Math.hypot(tr[i][0]-tr[i-1][0],tr[i][1]-tr[i-1][1]);acc+=d;
+      if(acc>=next){drags.push([tr[i-1][0],tr[i-1][1],sp*(1-.5*acc/T.tl)]);next+=T.ts;}}}
   const deps=[];
   if(amt>.01){const n=Math.max(1,Math.min(6,Math.ceil(Math.hypot(ptr.u-ptr.pu,ptr.v-ptr.pv)/.006)));
     for(let i=1;i<=n;i++){const t=i/n;deps.push([ptr.pu+(ptr.u-ptr.pu)*t+off[0]*T.dep,ptr.pv+(ptr.v-ptr.pv)*t+off[1]*T.dep]);}}
-  eng.step({dt,amt,su:ptr.u,sv:ptr.v,Q:Q*(1-T.pq*sp),Qs:jm==='N'?Q*T.qs*(1-sp*T.ps):0,off,eps,eps2:eps*T.se,diss:Math.pow(T.diss,dt),
-    fu,fv,drad:T.drad*(1+T.pr*sp),k:Math.min(1,(T.dk+T.pk*sp)*Math.max(amt,T.pa*sp)*dt*60),deps,rad:(.010+.010*S.flow)*(1+T.pw*sp),foam:Math.max(foamAmt,sp*T.pf)*Math.min(1,ptr.amt*1.3),pull:sp*T.pf,ahead:(()=>{const v=Math.hypot(ptr.vu,ptr.vv)||1;return [ptr.vu/v*.035,ptr.vv/v*.035];})(),
+  eng.step({drags,dt,amt,su:ptr.u,sv:ptr.v,Q:Q*(1-T.pq*sp),Qs:jm==='N'?Q*T.qs*(1-sp*T.ps):0,off,eps,eps2:eps*T.se,diss:Math.pow(T.diss,dt),
+    fu,fv,drad:T.drad*(1+T.pr*sp),k:Math.min(1,(T.dk+T.pk*sp)*Math.max(amt,T.pa*sp)*dt*60),deps,rad:(.010+.010*S.flow)*(1+T.pw*sp),foam:Math.max(foamAmt,sp*T.pf)*Math.min(1,ptr.amt*1.3),pull:sp*T.pf,pullF:spF,thin:T.thin,ahead:(()=>{const v=Math.hypot(ptr.vu,ptr.vv)||1;return [ptr.vu/v*.035,ptr.vv/v*.035];})(),
     mixA:amt*dt*(.04+1.2*smoothstep(.6,1,hi))/Math.max(1,deps.length)});
 }
 function render(){
@@ -1000,12 +1017,15 @@ function render(){
     pouring:S.stream&&ptr.amt*S.flow>0.02?Math.min(1,ptr.amt*1.5):0,
     streamR:(2.2+3.2*S.flow)*(1.15-.45*S.h)});
 }
+const SDT=1/60;let simAcc=0;
+function tick(dt){const ts=learnFrame(dt);tiltFrame(dt*ts);simAcc+=dt*ts;let n=0;
+  while(simAcc>=SDT*.999&&n<4){step(SDT);simAcc-=SDT;n++;}if(n>=4)simAcc=0;}
 let last=performance.now();
 function frame(now){
   let dt=Math.min(.033,Math.max(.004,(now-last)/1000));last=now;
-  if(!window.__latte.paused){try{const ts=learnFrame(dt);tiltFrame(dt*ts);step(dt*ts);render();drawGuide();galleryFrame(dt);}catch(e){console.error(e);}}window.__latte.frames++;requestAnimationFrame(frame);
+  if(!window.__latte.paused){try{tick(dt);render();drawGuide();galleryFrame(dt);}catch(e){console.error(e);}}window.__latte.frames++;requestAnimationFrame(frame);
 }
-window.__latte={cup,get gallery(){return gallery},galleryFrame,openGallery,learn,learnFrame,drawGuide,LESSONS,startLesson,runLesson,__step:step,__render:render,tilt,tiltFrame,onOri,onMot,stats:()=>eng.stats&&eng.stats(),S,ptr,get fill(){return fill},get engine(){return eng.kind},frames:0,paused:false,geo:()=>({cx,cy,Ri,Rl:Rl()}),
+window.__latte={tick,cup,get gallery(){return gallery},galleryFrame,openGallery,learn,learnFrame,drawGuide,LESSONS,startLesson,runLesson,__step:step,__render:render,tilt,tiltFrame,onOri,onMot,stats:()=>eng.stats&&eng.stats(),S,ptr,get fill(){return fill},get engine(){return eng.kind},frames:0,paused:false,geo:()=>({cx,cy,Ri,Rl:Rl()}),
   run(path,dt){this.paused=true;for(const p of path){if(p){ptr.x=p[0];ptr.y=p[1];if(!ptr.down){ptr.down=true;ptr.fresh=true;}}else ptr.down=false;step(dt);}render();}};
 addEventListener('resize',layout);
 layout();resetCup();requestAnimationFrame(frame);
