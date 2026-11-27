@@ -737,7 +737,10 @@ const tilt={on:false,thumb:null,b:null,g:null,b0:null,g0:null,last:0,flow:0,
   pt:{on:false,t:0,cool:0,hits:0},lt:0};
 // A real jug: when it is full the milk reaches the spout after a small tip; as it empties you must tip further.
 // [tip where milk starts, extra tip to full flow] for a full jug; +34° more by the time the cup is full.
-const SENS={0:[30,32],1:[24,30],2:[16,28]};             // low / normal / high sensitivity
+// Calibrated from a barista recording (classic heart, Nov 2026): base pour ≈26° of tip from the resting hold,
+// heart build ≈36°, rising to ≈40° as the jug empties; a short un-tip to ≈17° pauses the stream.
+// [tip where milk starts, extra tip to full flow, extra tip needed when the jug is empty]
+const SENS={0:[17,22,6],1:[14,22,6],2:[11,22,6]};         // low / normal / high sensitivity
 function onOri(e){if(e.beta==null)return;if(rep.on&&!e.__rep)return;if(rec.on&&!e.__rep)rec.o.push([recT(),r2(e.beta),r2(e.gamma),r2(e.alpha)]);tilt.last=performance.now();
   if(tilt.b==null){tilt.b=e.beta;tilt.g=e.gamma;}
   tilt.b+=(e.beta-tilt.b)*.5;tilt.g+=(e.gamma-tilt.g)*.6;
@@ -777,24 +780,30 @@ $('#tcal').onclick=calibrate;$('#toff').onclick=stopTilt;
 function tiltFrame(dt){
   if(!tilt.on||tilt.b==null)return;
   if(learn.on&&(learn.mode==='demo'||learn.count>0)){if(learn.count>0)ptr.down=false;return;}
-  const [a0,span]=SENS[S.sens]||SENS[1];
-  const d0=a0+34*Math.min(1,fill),d1=d0+span;
+  const [a0,span,emp]=SENS[S.sens]||SENS[1];
+  const d0=a0+emp*Math.min(1,fill),d1=d0+span;
   const pourDeg=tilt.b0-tilt.b;                        // top edge tipped away = pouring
-  const target=smoothstep(d0,d1,pourDeg);
+  const P=tilt.pt;
+  // the finishing flick: a fast un-tip while pouring = lift + pull-through
+  const rate=tilt.pb==null?0:(tilt.b-tilt.pb)/Math.max(dt,1e-3);tilt.pb=tilt.b;
+  if(!P.on&&P.cool<=0&&tilt.flow>.4&&rate>T.flick){P.on=true;P.t=0;P.fromFlick=true;toast('משיכה ✓');}
+  let target=smoothstep(d0,d1,pourDeg);
+  if(P.on)target=Math.max(target,.45*(1-P.t));          // the stream keeps running thin through the pull
   tilt.flow+=(target-tilt.flow)*Math.min(1,dt*12);
   const f=tilt.flow;
   S.flow=Math.max(.05,f);
-  S.h=.97-.55*smoothstep(.28,.62,f);                   // gentle stream dives (high), strong stream floats foam (low)
+  // foam only floats once the cup is about half full (the surface rises to meet the spout) and the flow is strong
+  S.h=P.on?.75:.97-.55*smoothstep(.62,.88,f)*smoothstep(T.fh0,T.fh1,fill);         // base pour (moderate flow) dives; full flow close to the surface floats foam
   let dg=tilt.g-tilt.g0;dg=Math.max(-18,Math.min(18,dg));
   const R=Rl(),k=2*R/.98;
   let u,v;
   const lb=typeof learnTiltBase==='function'?learnTiltBase():null;
   if(lb){[u,v]=lb;}else if(tilt.thumb){[u,v]=toUV(tilt.thumb.x,tilt.thumb.y);}else{u=.5;v=.36;}
+  if(P.on||P.cool>0)tilt.lx=tilt.lv=0;                // the finishing flick is not a sideways wiggle
   if(S.wig)u+=(tilt.lx||0)*11.5;                       // move the jug sideways (1 cm ≈ 1/8.5 of the cup) → wiggle
   else u+=dg*.017;                                     // or rock the wrist
   if(!lb)v+=.20*smoothstep(.15,1,f);                          // more tilt → stream lands farther
   // pull-through: a quick push of the jug sweeps the stream to the far rim
-  const P=tilt.pt;
   if(P.cool>0)P.cool-=dt;
   if(P.on){if(P.t===0)P.v0=v;P.t=Math.min(1,P.t+dt/.4);const e=P.t*(.6+.4*P.t);
     let endV=Math.min(.92,P.v0+.36);if(learn.on&&learn.L){const ps=learn.L.steps.find(q=>q.pull);if(ps)endV=toUVjug(ps.f[1],0)[1];}
@@ -813,12 +822,14 @@ function tiltFrame(dt){
 // Lesson scripts in "jug frame": f = forward (towards the far rim, away from the jug), s = sideways. Units: cup radius ≈ 0.49.
 // Each step: dur (s), f:[from,to], flow, h (height 0=low … 1=high), wig:[amp from,amp to,Hz], pull, text.
 const LESSONS=[
- {id:'heart',name:'לב',level:'מתחילים',desc:'עיגול אחד ומשיכה דרכו',icon:'M22 38C10 30 6 24 6 17a8 8 0 0116-3 8 8 0 0116 3c0 7-4 13-16 21z',
+ {id:'heart',name:'לב',level:'מתחילים',desc:'בסיס, עצירה, עיגול ומשיכה',icon:'M22 38C10 30 6 24 6 17a8 8 0 0116-3 8 8 0 0116 3c0 7-4 13-16 21z',
+  // timed from a recorded barista pour (Nov 2026): ≈5 s base, short pause, ≈3.5 s heart, quick flick
   steps:[
-   {dur:2.0,f:[0,0],flow:.45,h:.95,text:'מזיגה גבוהה ודקה למרכז הכוס. החלב צולל מתחת לקרמה ובונה בסיס.'},
-   {dur:1.45,f:[-.15,-.15],flow:.9,h:.45,text:'הנמך את הכד עד שהפיה כמעט נוגעת בקפה, קצת קרוב אליך, והגבר זרימה. עיגול לבן גדל.'},
-   {dur:.5,f:[-.22,-.22],flow:.9,h:.45,text:'זוז מעט אחורה אליך, בלי לעצור. העיגול מתמלא.'},
-   {dur:.45,f:[-.28,.44],flow:.45,h:.75,pull:1,text:'הרם מעט, הקטן זרימה, ומשוך קו ישר ומהיר דרך העיגול עד השפה הנגדית. נוצר חוד וקו דק.'}]},
+   {dur:2.6,f:[0,0],flow:.55,h:.95,text:'מזיגה גבוהה ובינונית למרכז (הטיה של כ-25°). החלב צולל ובונה בסיס.'},
+   {dur:2.0,f:[-.05,-.05],flow:.95,h:.95,text:'הגבר זרימה (כ-35°), עדיין מגובה. הכוס מתמלאת עד חצי.'},
+   {dur:.6,f:[-.1,-.1],flow:0,h:.95,text:'עצירה קצרה: החזר את הכד מעט ותתכונן להנמיך.'},
+   {dur:3.4,f:[-.12,-.12],flow:.95,h:.45,text:'הנמך את הפיה כמעט עד הקפה והטה שוב (כ-36°–40°). עיגול לבן גדל.'},
+   {dur:.4,f:[-.14,.44],flow:.45,h:.75,pull:1,text:'הרם ומשוך קדימה בתנועה מהירה אחת, דרך העיגול עד השפה.'}]},
  {id:'tulip',name:'טוליפ',level:'בינוני',desc:'שלוש דחיפות ערומות',icon:'M22 40V22M12 28c0-8 4-12 10-12s10 4 10 12M14 19c0-6 3-10 8-10s8 4 8 10M17 11c0-3 2-6 5-6s5 3 5 6',
   steps:[
    {dur:2.4,f:[0,0],flow:.45,h:.95,text:'מזיגה גבוהה ודקה למרכז. בונים בסיס.'},
@@ -1085,7 +1096,7 @@ function repFrame(dt){if(!rep.on)return;const r=rep.data;rep.t+=dt*1000;
   if(rep.io>=r.o.length&&rep.im>=r.m.length){rep.on=false;ptr.down=false;tilt.flow=0;if(!rep.wasTilt){tilt.on=false;app.classList.remove('tilting');}toast('סוף ההשמעה');}}
 
 /* ---------- simulation step ---------- */
-const T={s0:.25,s1:.7,gate:1,ga:1.5,thin:.45,tl:0,ts:.02,pw:1,pf:1,rel:40,diss:.005,pq:1,ps:1,pr:-.6,pk:5,pa:1,pd:1.5,push:.6,se:2,off:.02,qs:1.5,dep:1,drag:1,q:3.2,drad:.04,dk:.35};window.__T=T;
+const T={fh0:.3,fh1:.55,flick:120,s0:.25,s1:.7,gate:1,ga:1.5,thin:.45,tl:0,ts:.02,pw:1,pf:1,rel:40,diss:.005,pq:1,ps:1,pr:-.6,pk:5,pa:1,pd:1.5,push:.3,se:2,off:.05,qs:1.5,dep:1,drag:1,q:1.6,drad:.04,dk:.35};window.__T=T;
 function smoothstep(a,b,x){x=Math.max(0,Math.min(1,(x-a)/(b-a)));return x*x*(3-2*x);}
 function step(dt){
   const pouring=ptr.down&&!full;
