@@ -142,7 +142,7 @@ a.ok{display:block;text-align:center;text-decoration:none;box-sizing:border-box}
       <li><b>לב:</b> מזגו בנקודה אחת עד שנוצר עיגול גדול, ואז משכו קו מהיר דרכו.</li>
       <li><b>גובה (High/Low):</b> מזיגה גבוהה צוללת מתחת לקרמה ומבהירה אותה. נמוכה מעלה קצף לבן.</li>
       <li><b>Flow:</b> קצב הזרימה. <b>Normal/Straight:</b> זרם נטוי שדוחף קדימה, או זרם ישר.</li>
-      <li><b>מצב כד (🫗 למעלה):</b> הטלפון הוא הכד. מחזיקים בנוחות, לוחצים "כיול", ומטים את הקצה העליון קדימה כדי למזוג. הטיה קלה נותנת זרם דק שצולל, והטיה חזקה מעלה קצף. נדנוד פרק היד ימינה ושמאלה הוא הנענוע. לסיום דוחפים את הטלפון קדימה בתנועה קצרה וחדה, והזרם נמשך לשפה הנגדית (אפשר גם להחליק באגודל על הכוס). רגישות ההטיה נקבעת בהגדרות.</li>
+      <li><b>מצב כד (🫗 למעלה):</b> הטלפון הוא הכד. מחזיקים בנוחות, לוחצים "כיול", ומטים את הקצה העליון קדימה כדי למזוג. הטיה קלה נותנת זרם דק שצולל, והטיה חזקה מעלה קצף. מזיזים את הטלפון ימינה ושמאלה (הזזה, לא סיבוב) כדי לנענע, כמו עם כד אמיתי. לסיום דוחפים את הטלפון קדימה בתנועה קצרה וחדה, והזרם נמשך לשפה הנגדית (אפשר גם להחליק באגודל על הכוס). רגישות ההטיה נקבעת בהגדרות.</li>
       <li><b>🎓 למידה:</b> בוחרים צורה, צופים בהדגמה ואז מנסים לבד. הנקודה מראה איפה הזרם צריך לנחות, וגודלה מראה כמה חזק למזוג. בסוף מקבלים ציון וטיפים.</li>
       <li><b>▦ גלריה:</b> כל כוס נשמרת אוטומטית בסוף המזיגה ובאיפוס.</li>
       <li>↺ מתחילים כוס חדשה. 👁 מסתיר את הממשק בשביל צילום.</li>
@@ -187,6 +187,7 @@ a.ok{display:block;text-align:center;text-decoration:none;box-sizing:border-box}
     <div class="row">קלייה<div class="seg" data-k="roast"><button data-v="0">בהירה</button><button data-v="1">כהה</button></div></div>
     <div class="row">הצג זרם חלב<div class="seg" data-k="stream"><button data-v="1">כן</button><button data-v="0">לא</button></div></div>
     <div class="row">רגישות הטיה<div class="seg" data-k="sens"><button data-v="0">נמוכה</button><button data-v="1">רגילה</button><button data-v="2">גבוהה</button></div></div>
+    <div class="row">נענוע (מצב כד)<div class="seg" data-k="wig"><button data-v="1">הזזה</button><button data-v="0">סיבוב</button></div></div>
     <div class="row">משיכה בדחיפת הטלפון<div class="seg" data-k="track"><button data-v="1">כן</button><button data-v="0">לא</button></div></div>
     <button class="ok" data-close>סגור</button>
   </div></div>
@@ -199,9 +200,10 @@ const $=s=>document.querySelector(s);
 const app=$('#app');let canvas=$('#c');
 
 /* ---------- settings ---------- */
-const S={h:0.72, flow:0.9, mode:'N', q:(Math.min(screen.width,screen.height)>700?2:1), roast:0, stream:1, sens:1, track:1};
-try{const o=JSON.parse(localStorage.getItem('lattelab')||'{}');for(const k of ['q','roast','stream','sens','track'])if(o[k]!=null)S[k]=o[k];}catch(e){}
-const save=()=>{try{localStorage.setItem('lattelab',JSON.stringify({q:S.q,roast:S.roast,stream:S.stream,sens:S.sens,track:S.track}))}catch(e){}};
+const CUP={milk:210,flowMax:25};   // cappuccino cup: ~210 ml of milk on top of a double espresso; strong pour ≈ 25 ml/s
+const S={h:0.72, flow:0.9, mode:'N', q:(Math.min(screen.width,screen.height)>700?2:1), roast:0, stream:1, sens:1, track:1, wig:1};
+try{const o=JSON.parse(localStorage.getItem('lattelab')||'{}');for(const k of ['q','roast','stream','sens','track','wig'])if(o[k]!=null)S[k]=o[k];}catch(e){}
+const save=()=>{try{localStorage.setItem('lattelab',JSON.stringify({q:S.q,roast:S.roast,stream:S.stream,sens:S.sens,track:S.track,wig:S.wig}))}catch(e){}};
 
 
 /* ================= GPU engine (WebGL) ================= */
@@ -699,12 +701,18 @@ function onOri(e){if(e.beta==null)return;tilt.last=performance.now();
   if(tilt.b==null){tilt.b=e.beta;tilt.g=e.gamma;}
   tilt.b+=(e.beta-tilt.b)*.5;tilt.g+=(e.gamma-tilt.g)*.6;
   if(tilt.b0==null){tilt.b0=tilt.b;tilt.g0=tilt.g;}}
-function onMot(e){const A=e.acceleration;if(!S.track||!A||A.y==null||tilt.b==null)return;
+function onMot(e){const A=e.acceleration;if(!A||A.x==null||tilt.b==null)return;
+  // sideways movement of the jug: double integration with leaks (≈0.3 Hz high-pass) → follows a 2–5 Hz wiggle, returns to centre when you stop
+  const now=performance.now(),dt=Math.min(.05,Math.max(.005,(now-(tilt.mt||now))/1000||.016));tilt.mt=now;
+  let ax=A.x;ax=Math.abs(ax)<.04?0:ax;
+  tilt.lv=((tilt.lv||0)+ax*dt)*Math.exp(-dt/.22);tilt.lx=((tilt.lx||0)+tilt.lv*dt)*Math.exp(-dt/.3);
+  tilt.lx=Math.max(-.035,Math.min(.035,tilt.lx));
+  if(!S.track||A.y==null)return;
   if(tilt.pt.on||tilt.pt.cool>0||tilt.flow<.2){tilt.pt.hits=0;return;}
   const br=tilt.b*Math.PI/180,af=A.y*Math.cos(br)-(A.z||0)*Math.sin(br);   // horizontal push along the spout
   tilt.pt.hits=Math.abs(af)>3.2?tilt.pt.hits+1:0;
   if(tilt.pt.hits>=2){tilt.pt.on=true;tilt.pt.t=0;tilt.pt.hits=0;toast('משיכה ✓');}}
-function calibrate(){tilt.b0=tilt.b;tilt.g0=tilt.g;toast('כויל ✓ הטו קדימה כדי למזוג');}
+function calibrate(){tilt.b0=tilt.b;tilt.g0=tilt.g;tilt.lx=tilt.lv=0;toast('כויל ✓ הטו קדימה כדי למזוג');}
 async function startTilt(){
   try{
     if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
@@ -739,7 +747,8 @@ function tiltFrame(dt){
   let u,v;
   const lb=typeof learnTiltBase==='function'?learnTiltBase():null;
   if(lb){[u,v]=lb;}else if(tilt.thumb){[u,v]=toUV(tilt.thumb.x,tilt.thumb.y);}else{u=.5;v=.36;}
-  u+=dg*.017;                                          // wrist rock → side-to-side wiggle
+  if(S.wig)u+=(tilt.lx||0)*11.5;                       // move the jug sideways (1 cm ≈ 1/8.5 of the cup) → wiggle
+  else u+=dg*.017;                                     // or rock the wrist
   if(!lb)v+=.20*smoothstep(.15,1,f);                          // more tilt → stream lands farther
   // pull-through: a quick push of the jug sweeps the stream to the far rim
   const P=tilt.pt;
@@ -965,7 +974,7 @@ function step(dt){
     else{ptr.pu=ptr.u;ptr.pv=ptr.v;ptr.u=u;ptr.v=v;}
     const k=Math.min(1,dt*25);
     ptr.vu+=((ptr.u-ptr.pu)/dt-ptr.vu)*k;ptr.vv+=((ptr.v-ptr.pv)/dt-ptr.vv)*k;
-    fill=Math.min(1,fill+dt*S.flow*.085);
+    fill=Math.min(1,fill+dt*S.flow*CUP.flowMax/CUP.milk);
     if(fill>=1&&!full){full=true;ptr.down=false;toast('הכוס מלאה ☕ לחצו ↺ לכוס חדשה');setTimeout(()=>storeCup(false),900);}
   }
   const hi=S.h, foamAmt=1-smoothstep(.80,.99,hi);
